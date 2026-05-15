@@ -3,15 +3,14 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
-const mapRoutes = require('./routes/maps.routes')
+const mapRoutes = require('./src/routes/maps.routes.js')
 
 const app = express();
 
 app.use(cors())
 app.use(express.json())
 
-app.use('/maps', mapsRoutes)
-
+app.use('/maps', mapRoutes)
 
 app.listen(process.env.PORT, () => {
   console.log(`Servidor corriendo en puerto ${process.env.PORT}`)
