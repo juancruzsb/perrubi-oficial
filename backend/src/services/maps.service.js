@@ -135,6 +135,25 @@ const getDirection = async (req, res) => {
   }
 }
 
+const createSingleRouteWaypoints = async (req, res) => {
+  try {
+    let waypoints = []
+    let radius = 1200 //radio de busqueda en metros
+
+    axios.post(
+      'https://places.googleapis.com/v1/places:searchNearby',
+      req.body,
+    )
+
+    res.json(waypoints)
+  } catch (error) {
+    console.error(error.response?.data || error.message)
+    res.status(500).json({
+      error: 'Error creando puntos de ruta'
+    })
+  }
+}
+
 module.exports = {
   getRoute,
   getDirection

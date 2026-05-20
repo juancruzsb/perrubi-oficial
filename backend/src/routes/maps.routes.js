@@ -12,7 +12,6 @@ router.get('/', (req, res) => {
         message: 'API de mapas funcionando'
     })
 });
-
 router.post('/route', getRoute);
 router.post('/directions', getDirection);
 
