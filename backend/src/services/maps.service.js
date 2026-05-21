@@ -138,7 +138,47 @@ const getDirection = async (req, res) => {
 const createSingleRouteWaypoints = async (req, res) => {
   try {
     let waypoints = []
-    let radius = 1200 //radio de busqueda en metros
+    let diametro = 1200 
+    let radio = diametro / 2
+
+    let punto_de_salida = req.body.punto_de_salida
+    let latitud = punto_de_salida.location.latitude
+    let longitud = punto_de_salida.location.longitude
+    let variacion_lat_metros = 0.00000898
+    let variacion_lon_metros = 0.0000109
+
+    let direccion = req.body.direccion
+    let primer_punto = {
+      location: {
+        latitude: latitud,
+        longitude: longitud
+      }
+    };
+
+    let segundo_punto = {
+      location: {
+        latitude: latitud,
+        longitude: longitud
+      }
+    };
+
+    switch (direccion) {
+      case 'N':
+        primer_punto.location.latitude += radio / 2 * variacion_lat_metros;
+        segundo_punto = primer_punto
+        primer_punto.location.longitude += radio / 3 * variacion_lon_metros;
+        break;
+      case 'S':
+        primer_punto.location.latitude -= radio / 2 * variacion_lat_metros;
+        break;
+      case 'E':
+        primer_punto.location.longitude += radio / 2 * variacion_lon_metros;
+        break;
+      case 'O':
+        primer_punto.location.longitude -= radio / 2 * variacion_lon_metros;
+        break;
+    }
+
 
     axios.post(
       'https://places.googleapis.com/v1/places:searchNearby',
