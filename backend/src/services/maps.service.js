@@ -138,16 +138,20 @@ const getDirection = async (req, res) => {
 const createSingleRouteWaypoints = async (req, res) => {
   try {
     let waypoints = []
+
+    //datos del semicirculo de busqueda, se busca en un radio de 1200 metros alrededor del punto de salida,
+    //y se generan 4 puntos de busqueda en ese radio dependiendo de la direccion que se quiera buscar (N, S, E, O)
     let diametro = 1200 
     let radio = diametro / 2
 
-    let punto_de_salida = req.body.punto_de_salida
+    const direccion = req.body.direccion
+    const punto_de_salida = req.body.punto_de_salida
     let latitud = punto_de_salida.location.latitude
     let longitud = punto_de_salida.location.longitude
-    let variacion_lat_metros = 0.00000898
-    let variacion_lon_metros = 0.0000109
 
-    let direccion = req.body.direccion
+    const variacion_lat_metros = 0.00000898
+    const variacion_lng_metros = 0.00000898 / Math.cos(latitud * Math.PI / 180);
+
     let primer_punto = {
       location: {
         latitude: latitud,
@@ -162,29 +166,56 @@ const createSingleRouteWaypoints = async (req, res) => {
       }
     };
 
+    let tercer_punto = {
+      location: {
+        latitude: latitud,
+        longitude: longitud
+      }
+    };
+
+    let cuarto_punto = {
+      location: {
+        latitude: latitud,
+        longitude: longitud
+      }
+    };
+
     switch (direccion) {
       case 'N':
         primer_punto.location.latitude += radio / 2 * variacion_lat_metros;
         segundo_punto = primer_punto
-        primer_punto.location.longitude += radio / 3 * variacion_lon_metros;
+        primer_punto.location.longitude += radio / 3 * variacion_lng_metros;
+        segundo_punto.location.longitude -= radio / 3 * variacion_lng_metros;
+
+        tercer_punto.location.latitude += radio * 1 / 4 * variacion_lat_metros;
+        cuarto_punto = tercer_punto
+        tercer_punto.location.longitude += radio * 2 / 3 * variacion_lng_metros;
+        cuarto_punto.location.longitude -= radio * 2 / 3 * variacion_lng_metros;
         break;
       case 'S':
         primer_punto.location.latitude -= radio / 2 * variacion_lat_metros;
+        segundo_punto = primer_punto
+        primer_punto.location.longitude -= radio / 3 * variacion_lng_metros;
+        segundo_punto.location.longitude += radio / 3 * variacion_lng_metros;
+        
+        tercer_punto.location.latitude -= radio * 1 / 4 * variacion_lat_metros;
+        cuarto_punto = tercer_punto
+        tercer_punto.location.longitude -= radio * 2 / 3 * variacion_lng_metros;
+        cuarto_punto.location.longitude += radio * 2 / 3 * variacion_lng_metros;
         break;
       case 'E':
-        primer_punto.location.longitude += radio / 2 * variacion_lon_metros;
+        primer_punto.location.longitude += radio / 2 * variacion_lng_metros;
         break;
       case 'O':
-        primer_punto.location.longitude -= radio / 2 * variacion_lon_metros;
+        primer_punto.location.longitude -= radio / 2 * variacion_lng_metros;
         break;
     }
 
-
-    axios.post(
-      'https://places.googleapis.com/v1/places:searchNearby',
-      req.body,
-    )
-
+    waypoints.push(primer_punto)
+    waypoints.push(segundo_punto)
+    waypoints.push(tercer_punto)
+    waypoints.push(cuarto_punto)
+    
     res.json(waypoints)
   } catch (error) {
     console.error(error.response?.data || error.message)
@@ -196,5 +227,6 @@ const createSingleRouteWaypoints = async (req, res) => {
 
 module.exports = {
   getRoute,
-  getDirection
+  getDirection,
+  createSingleRouteWaypoints
 }

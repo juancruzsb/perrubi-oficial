@@ -4,7 +4,8 @@ const router = express.Router();
 
 const {
     getRoute,
-    getDirection
+    getDirection,
+    createSingleRouteWaypoints
 } = require('../services/maps.service');
 
 router.get('/', (req, res) => {
@@ -14,5 +15,7 @@ router.get('/', (req, res) => {
 });
 router.post('/route', getRoute);
 router.post('/directions', getDirection);
+router.post('/route/waypoints', createSingleRouteWaypoints);
+
 
 module.exports = router;
