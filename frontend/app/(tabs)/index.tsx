@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  ScrollView,
   View,
   Text,
   TouchableOpacity,
@@ -7,69 +8,109 @@ import {
   StyleSheet,
 } from "react-native";
 
-export default function App() {
+export default function HomeScreen() {
   const [duracion, setDuracion] = useState("");
+  const [ubicacion, setUbicacion] = useState("");
   const [socializacion, setSocializacion] = useState("");
   const [notas, setNotas] = useState("");
 
   const continuar = () => {
     console.log({
       duracion,
+      ubicacion,
       socializacion,
       notas,
     });
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.titulo}>Crear Paseo</Text>
 
-      <Text style={styles.subtitulo}>Duración del paseo</Text>
+      <Text style={styles.subtitulo}>
+        Duración del paseo
+      </Text>
 
       <View style={styles.fila}>
         <TouchableOpacity
-          style={styles.boton}
+          style={[
+            styles.boton,
+            duracion === "30 min" && styles.botonActivo,
+          ]}
           onPress={() => setDuracion("30 min")}
         >
           <Text>30 min</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.boton}
+          style={[
+            styles.boton,
+            duracion === "45 min" && styles.botonActivo,
+          ]}
           onPress={() => setDuracion("45 min")}
         >
           <Text>45 min</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.boton}
+          style={[
+            styles.boton,
+            duracion === "60 min" && styles.botonActivo,
+          ]}
           onPress={() => setDuracion("60 min")}
         >
           <Text>60 min</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.boton,
+            duracion === "90 min" && styles.botonActivo,
+          ]}
+          onPress={() => setDuracion("90 min")}
+        >
+          <Text>90 min</Text>
         </TouchableOpacity>
       </View>
 
       <Text>Seleccionado: {duracion}</Text>
 
-      <Text style={styles.subtitulo}>Zona de paseo</Text>
+      <Text style={styles.subtitulo}>
+        Zona de paseo
+      </Text>
 
-      <TouchableOpacity style={styles.botonGrande}>
-        <Text>Mi ubicación actual</Text>
-      </TouchableOpacity>
+      <TextInput
+        style={styles.input}
+        placeholder="Ingresa una dirección"
+        value={ubicacion}
+        onChangeText={setUbicacion}
+      />
 
-      <Text style={styles.subtitulo}>Socialización</Text>
+      <Text style={styles.subtitulo}>
+        Socialización
+      </Text>
 
-      <Text>¿Tu perro puede socializar con otros perros?</Text>
+      <Text>
+        ¿Tu perro puede socializar con otros perros?
+      </Text>
 
       <TouchableOpacity
-        style={styles.boton}
+        style={[
+          styles.boton,
+          socializacion === "Sí" &&
+            styles.botonActivo,
+        ]}
         onPress={() => setSocializacion("Sí")}
       >
         <Text>Sí, puede</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.boton}
+        style={[
+          styles.boton,
+          socializacion === "No" &&
+            styles.botonActivo,
+        ]}
         onPress={() => setSocializacion("No")}
       >
         <Text>No, prefiero que no</Text>
@@ -97,16 +138,16 @@ export default function App() {
           Continuar
         </Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: 20,
     gap: 15,
-    marginTop: 50,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
 
   titulo: {
@@ -131,10 +172,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
 
-  botonGrande: {
-    padding: 15,
-    backgroundColor: "#ddd",
-    borderRadius: 10,
+  botonActivo: {
+    backgroundColor: "#8BE28B",
   },
 
   input: {
@@ -142,8 +181,7 @@ const styles = StyleSheet.create({
     borderColor: "#999",
     borderRadius: 10,
     padding: 10,
-    minHeight: 100,
-    textAlignVertical: "top",
+    minHeight: 50,
   },
 
   continuar: {
@@ -151,10 +189,11 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
+    marginTop: 20,
   },
 
   textoContinuar: {
     color: "white",
     fontWeight: "bold",
   },
-})
+});
