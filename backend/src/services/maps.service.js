@@ -3,7 +3,7 @@ const axios = require('axios')
 const getRoute = async (req, res) => {
   try {
     //formato de req.body:
-    //{
+    // {
     //  "origin" (direccion origen):{
     //    "location":{
     //      "latLng" (coordenadas en latitud y longitud, se obtienen con getDirection):{
@@ -37,37 +37,51 @@ const getRoute = async (req, res) => {
     //          }
     //        }
     //      }
-    //    ],
+    //    ]
+    //  }
+    //
+    // Esto se añade automaticamente al body desde el back, no es necesario que el front lo envie, pero se muestra para entender el formato de la request.
     //  "travelMode" (modo de viaje, en caso de perrubi siempre sera WALK): "WALK",
-    //  "departureTime" (hora de salida, en formato timestamp): "2024-06-01T08:00:00Z",
     //  "routeModifiers" (algunos modificadores de ruta): {
     //    avoidIndoor (evita rutas por interiores): true,
     //  },
     // "optimizeWaypointOrder" (optimiza el orden de los waypoints (destinos intermedios), siempre en true): true,
     //  "languageCode" (lenguaje): "en-US",
     //  "units" (unidades, en este caso metros): "METRIC"
-    //}
+    //
+
+    const {origin, destination, intermediates} = req.body
 
     const response = await axios.post(
 
       'https://routes.googleapis.com/directions/v2:computeRoutes',
 
-      req.body,
+      {
+        origin: origin,
+        destination: destination,
+        intermediates: intermediates || [],
+        travelMode: "WALK",
+        routeModifiers: {
+          avoidIndoor: true,
+        },
+        optimizeWaypointOrder: true,
+        languageCode: "en-US",
+        units: "METRIC"
+      },
       {
         headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key':
           process.env.API_KEY_MAPS,
         'X-Goog-FieldMask':
-          'routes.duration,routes.distanceMeters'
+          'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.optimized_intermediate_waypoint_index'
         }
       }
     )
 
-    res.json(response.data)
+    res.json(response.data) 
 
   } catch (error) {
-
     console.error(error.response?.data || error.message)
 
     res.status(500).json({
@@ -83,9 +97,11 @@ const getDirection = async (req, res) => {
       //   "textQuery": Ubicacion a buscar, por ejemplo: "Galván 3124, CABA"
       // }
 
+      const {textQuery} = req.body
+
     const place_info = await axios.post(
       'https://places.googleapis.com/v1/places:searchText',
-      req.body,
+      { textQuery: textQuery },
       {
         headers: {
           'Content-Type': 'application/json',
@@ -135,98 +151,7 @@ const getDirection = async (req, res) => {
   }
 }
 
-const createSingleRouteWaypoints = async (req, res) => {
-  try {
-    let waypoints = []
-
-    //datos del semicirculo de busqueda, se busca en un radio de 1200 metros alrededor del punto de salida,
-    //y se generan 4 puntos de busqueda en ese radio dependiendo de la direccion que se quiera buscar (N, S, E, O)
-    let diametro = 1200 
-    let radio = diametro / 2
-
-    const direccion = req.body.direccion
-    const punto_de_salida = req.body.punto_de_salida
-    let latitud = punto_de_salida.location.latitude
-    let longitud = punto_de_salida.location.longitude
-
-    const variacion_lat_metros = 0.00000898
-    const variacion_lng_metros = 0.00000898 / Math.cos(latitud * Math.PI / 180);
-
-    let primer_punto = {
-      location: {
-        latitude: latitud,
-        longitude: longitud
-      }
-    };
-
-    let segundo_punto = {
-      location: {
-        latitude: latitud,
-        longitude: longitud
-      }
-    };
-
-    let tercer_punto = {
-      location: {
-        latitude: latitud,
-        longitude: longitud
-      }
-    };
-
-    let cuarto_punto = {
-      location: {
-        latitude: latitud,
-        longitude: longitud
-      }
-    };
-
-    switch (direccion) {
-      case 'N':
-        primer_punto.location.latitude += radio / 2 * variacion_lat_metros;
-        segundo_punto = primer_punto
-        primer_punto.location.longitude += radio / 3 * variacion_lng_metros;
-        segundo_punto.location.longitude -= radio / 3 * variacion_lng_metros;
-
-        tercer_punto.location.latitude += radio * 1 / 4 * variacion_lat_metros;
-        cuarto_punto = tercer_punto
-        tercer_punto.location.longitude += radio * 2 / 3 * variacion_lng_metros;
-        cuarto_punto.location.longitude -= radio * 2 / 3 * variacion_lng_metros;
-        break;
-      case 'S':
-        primer_punto.location.latitude -= radio / 2 * variacion_lat_metros;
-        segundo_punto = primer_punto
-        primer_punto.location.longitude -= radio / 3 * variacion_lng_metros;
-        segundo_punto.location.longitude += radio / 3 * variacion_lng_metros;
-        
-        tercer_punto.location.latitude -= radio * 1 / 4 * variacion_lat_metros;
-        cuarto_punto = tercer_punto
-        tercer_punto.location.longitude -= radio * 2 / 3 * variacion_lng_metros;
-        cuarto_punto.location.longitude += radio * 2 / 3 * variacion_lng_metros;
-        break;
-      case 'E':
-        primer_punto.location.longitude += radio / 2 * variacion_lng_metros;
-        break;
-      case 'O':
-        primer_punto.location.longitude -= radio / 2 * variacion_lng_metros;
-        break;
-    }
-
-    waypoints.push(primer_punto)
-    waypoints.push(segundo_punto)
-    waypoints.push(tercer_punto)
-    waypoints.push(cuarto_punto)
-    
-    res.json(waypoints)
-  } catch (error) {
-    console.error(error.response?.data || error.message)
-    res.status(500).json({
-      error: 'Error creando puntos de ruta'
-    })
-  }
-}
-
 module.exports = {
   getRoute,
   getDirection,
-  createSingleRouteWaypoints
 }
