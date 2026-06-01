@@ -1,7 +1,7 @@
-const axios = require('axios')
+import axios from 'axios'
+const MapsService = {}
 
-const getRoute = async (req, res) => {
-  try {
+MapsService.getRoute = async ({ origin, destination, intermediates }) => {
     //formato de req.body:
     // {
     //  "origin" (direccion origen):{
@@ -48,9 +48,6 @@ const getRoute = async (req, res) => {
     // "optimizeWaypointOrder" (optimiza el orden de los waypoints (destinos intermedios), siempre en true): true,
     //  "languageCode" (lenguaje): "en-US",
     //  "units" (unidades, en este caso metros): "METRIC"
-    //
-
-    const {origin, destination, intermediates} = req.body
 
     const response = await axios.post(
 
@@ -79,25 +76,14 @@ const getRoute = async (req, res) => {
       }
     )
 
-    res.json(response.data) 
-
-  } catch (error) {
-    console.error(error.response?.data || error.message)
-
-    res.status(500).json({
-      error: 'Error obteniendo ruta'
-    })
-  }
+    return response.data
 }
 
-const getDirection = async (req, res) => {
-  try {
+MapsService.getDirection = async ({ textQuery }) => {
       //formato de req.body:
       // {
       //   "textQuery": Ubicacion a buscar, por ejemplo: "Galván 3124, CABA"
       // }
-
-      const {textQuery} = req.body
 
     const place_info = await axios.post(
       'https://places.googleapis.com/v1/places:searchText',
@@ -142,16 +128,7 @@ const getDirection = async (req, res) => {
     //   }
     // }
 
-    res.json(response.data)
-  } catch (error) {
-    console.error(error.response?.data || error.message)
-    res.status(500).json({
-      error: 'Error obteniendo direcciones'
-    })
-  }
+    return response.data
 }
 
-module.exports = {
-  getRoute,
-  getDirection,
-}
+export default MapsService
