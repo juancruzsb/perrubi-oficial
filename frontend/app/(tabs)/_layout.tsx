@@ -1,44 +1,87 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Platform, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
  
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+const GREEN      = '#4caf50';
+const TEXT_MUTED = '#999999';
+const WHITE      = '#ffffff';
+const BORDER     = '#e0e0e0';
  
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
- 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarStyle: styles.tabBar,
+        tabBarActiveTintColor: GREEN,
+        tabBarInactiveTintColor: TEXT_MUTED,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarItemStyle: styles.tabItem,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Inicio',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="mis-paseos"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Mis paseos',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'Chat',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="perfil"
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
+          ),
         }}
       />
  
-      {/* Pantalla oculta — no aparece en la tab bar */}
+      {/* Oculta de la tab bar */}
       <Tabs.Screen
         name="crear-paseo"
-        options={{
-          href: null, // la excluye de la tab bar completamente
-        }}
+        options={{ href: null }}
       />
     </Tabs>
   );
 }
  
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: WHITE,
+    borderTopWidth: 0.5,
+    borderTopColor: BORDER,
+    height: Platform.OS === 'ios' ? 84 : 64,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+    paddingTop: 8,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  tabItem: {
+    paddingTop: 2,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+});

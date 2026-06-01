@@ -7,25 +7,23 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
-  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
  
 // ─── COLORES ────────────────────────────────────────────────
-const GREEN       = '#4caf50';
-const GREEN_LIGHT = '#e8f5e9';
-const GREEN_DARK  = '#388e3c';
-const PURPLE      = '#7c3aed';
-const PURPLE_LIGHT= '#f3f0ff';
-const RED         = '#ef4444';
-const BG          = '#f5f5f5';
-const WHITE       = '#ffffff';
+const GREEN        = '#4caf50';
+const GREEN_LIGHT  = '#e8f5e9';
+const GREEN_DARK   = '#388e3c';
+const PURPLE       = '#7c3aed';
+const PURPLE_LIGHT = '#f3f0ff';
+const RED          = '#ef4444';
+const BG           = '#f5f5f5';
+const WHITE        = '#ffffff';
 const TEXT_PRIMARY   = '#1a1a1a';
 const TEXT_SECONDARY = '#666666';
 const TEXT_MUTED     = '#999999';
 const BORDER         = '#e0e0e0';
  
-// ─── TIPOS ──────────────────────────────────────────────────
 type Perro = {
   id: string; nombre: string; tipo: string; edad: string; activo: boolean;
 };
@@ -33,7 +31,6 @@ type PaseoReciente = {
   id: string; dia: string; tiempo: string; ubicacion: string; completado: boolean;
 };
  
-// ─── MOCK DATA ───────────────────────────────────────────────
 const perrosMock: Perro[] = [
   { id: '1', nombre: 'Nombre del perro', tipo: 'Tipo de perro', edad: 'Edad del perro', activo: true },
 ];
@@ -65,21 +62,18 @@ function Header({ tieneNotif }: { tieneNotif: boolean }) {
 }
  
 // ─── HERO BANNER ────────────────────────────────────────────
-// En la imagen final el banner ocupa todo el ancho con una ilustración
-// de fondo (sala con perro). Dejamos el placeholder listo para swapear.
 function HeroBanner() {
   return (
     <View style={styles.heroBanner}>
       {/*
-        TODO: reemplazar este View por:
+        TODO: reemplazar por:
         <ImageBackground
           source={require('@/assets/images/hero-banner.png')}
-          style={styles.heroBanner}
+          style={StyleSheet.absoluteFill}
           resizeMode="cover"
-        >
+        />
       */}
       <View style={styles.heroBannerBg}>
-        {/* Placeholder ilustración — reemplazar con ImageBackground */}
         <Text style={styles.heroBannerEmoji}>🛋️🌿🐕</Text>
         <Text style={styles.placeholderLabel}>Ilustración: sala con perro</Text>
       </View>
@@ -97,10 +91,8 @@ function SeccionServicios({ onServicio }: { onServicio: (tipo: string) => void }
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>¿Qué servicio necesitas?</Text>
       <View style={styles.serviciosRow}>
- 
         <TouchableOpacity style={styles.servicioCard} onPress={() => onServicio('paseo')}>
           <View style={[styles.servicioIconWrap, { backgroundColor: GREEN_LIGHT }]}>
-            {/* TODO: <Image source={require('@/assets/icons/pata.png')} style={{width:24,height:24,tintColor:GREEN}} /> */}
             <Text style={styles.servicioIconEmoji}>🐾</Text>
           </View>
           <Text style={styles.servicioNombre}>Paseo</Text>
@@ -112,7 +104,6 @@ function SeccionServicios({ onServicio }: { onServicio: (tipo: string) => void }
  
         <TouchableOpacity style={[styles.servicioCard, styles.servicioCardPurple]} onPress={() => onServicio('adiestramiento')}>
           <View style={[styles.servicioIconWrap, { backgroundColor: PURPLE_LIGHT }]}>
-            {/* TODO: <Image source={require('@/assets/icons/gorra.png')} style={{width:24,height:24,tintColor:PURPLE}} /> */}
             <Text style={styles.servicioIconEmoji}>🎓</Text>
           </View>
           <Text style={styles.servicioNombre}>Paseo +{'\n'}Adiestramiento</Text>
@@ -121,7 +112,6 @@ function SeccionServicios({ onServicio }: { onServicio: (tipo: string) => void }
             <Text style={styles.servicioArrowText}>→</Text>
           </View>
         </TouchableOpacity>
- 
       </View>
     </View>
   );
@@ -135,8 +125,7 @@ function SeccionPerrosConDatos({ perros }: { perros: Perro[] }) {
       <View style={styles.card}>
         {perros.map((p) => (
           <TouchableOpacity key={p.id} style={styles.perroRow}>
-            {/* TODO: <Image source={{uri: p.foto}} style={styles.perroFoto} /> */}
-            <View style={styles.perroFotoPlaceholder}><Text style={{fontSize:20}}>🐶</Text></View>
+            <View style={styles.perroFotoPlaceholder}><Text style={{ fontSize: 20 }}>🐶</Text></View>
             <View style={styles.perroInfo}>
               <View style={styles.perroNombreRow}>
                 <Text style={styles.perroNombre}>{p.nombre}</Text>
@@ -169,15 +158,12 @@ function SeccionPerrosVacia() {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Tu perro</Text>
       <View style={[styles.card, styles.cardVacio]}>
-        {/* TODO: <Image source={require('@/assets/images/perro-durmiendo.png')} style={{width:120,height:80}} /> */}
         <View style={styles.emptyIlustPlaceholder}>
-          <Text style={{fontSize:36}}>😴🐕</Text>
+          <Text style={{ fontSize: 36 }}>😴🐕</Text>
           <Text style={styles.placeholderLabel}>Ilustración: perro durmiendo</Text>
         </View>
         <Text style={styles.emptyTitle}>Aún no agregaste un perro</Text>
-        <Text style={styles.emptySubtitle}>
-          Agregá a tu compañero para empezar a planificar sus paseos.
-        </Text>
+        <Text style={styles.emptySubtitle}>Agregá a tu compañero para empezar a planificar sus paseos.</Text>
         <TouchableOpacity style={styles.agregarPerroBtn}>
           <Text style={styles.agregarPerroIcon}>⊕</Text>
           <Text style={styles.agregarPerroBtnText}>Agregar otro perro</Text>
@@ -187,7 +173,7 @@ function SeccionPerrosVacia() {
   );
 }
  
-// ─── PASEOS RECIENTES — CON DATOS ────────────────────────────
+// ─── PASEOS — CON DATOS ──────────────────────────────────────
 function SeccionPaseosConDatos({ paseos }: { paseos: PaseoReciente[] }) {
   return (
     <View style={styles.section}>
@@ -198,15 +184,13 @@ function SeccionPaseosConDatos({ paseos }: { paseos: PaseoReciente[] }) {
       <View style={styles.card}>
         {paseos.map((p) => (
           <TouchableOpacity key={p.id} style={styles.paseoRow}>
-            {/* TODO: miniatura del mapa real con react-native-maps snapshot */}
-            <View style={styles.mapaThumbnailPlaceholder}><Text style={{fontSize:22}}>🗺️</Text></View>
+            <View style={styles.mapaThumbnailPlaceholder}><Text style={{ fontSize: 22 }}>🗺️</Text></View>
             <View style={styles.paseoInfo}>
               <Text style={styles.paseoNombre}>{p.dia}</Text>
               <Text style={styles.paseoDetalle}>{p.tiempo} | {p.ubicacion}</Text>
               {p.completado && (
                 <View style={styles.completadoBadge}>
-                  <Text style={styles.completadoBadgeIcon}>✓</Text>
-                  <Text style={styles.completadoBadgeText}>Completado</Text>
+                  <Text style={styles.completadoBadgeText}>✓ Completado</Text>
                 </View>
               )}
             </View>
@@ -218,7 +202,7 @@ function SeccionPaseosConDatos({ paseos }: { paseos: PaseoReciente[] }) {
   );
 }
  
-// ─── PASEOS RECIENTES — VACÍO ─────────────────────────────────
+// ─── PASEOS — VACÍO ──────────────────────────────────────────
 function SeccionPaseosVacio() {
   return (
     <View style={styles.section}>
@@ -227,8 +211,7 @@ function SeccionPaseosVacio() {
         <TouchableOpacity><Text style={styles.verTodos}>Ver todos</Text></TouchableOpacity>
       </View>
       <View style={[styles.card, styles.paseoVacioWrap]}>
-        {/* TODO: <Image source={require('@/assets/icons/calendario.png')} style={{width:28,height:28,tintColor:GREEN}} /> */}
-        <Text style={{fontSize:28, marginRight:12}}>📅</Text>
+        <Text style={{ fontSize: 28, marginRight: 12 }}>📅</Text>
         <View>
           <Text style={styles.emptyTitle}>Aún no tenés paseos</Text>
           <Text style={styles.emptySubtitle}>Cuando reserves un paseo, lo verás aquí.</Text>
@@ -252,7 +235,7 @@ function SeccionPorQueElegir() {
         {items.map((item) => (
           <View key={item.titulo} style={styles.porQueItem}>
             <View style={[styles.porQueIconWrap, { backgroundColor: item.color }]}>
-              <Text style={{fontSize:18}}>{item.emoji}</Text>
+              <Text style={{ fontSize: 18 }}>{item.emoji}</Text>
             </View>
             <Text style={styles.porQueTitulo}>{item.titulo}</Text>
             <Text style={styles.porQueDesc}>{item.desc}</Text>
@@ -263,56 +246,25 @@ function SeccionPorQueElegir() {
   );
 }
  
-// ─── TAB BAR FIJO ────────────────────────────────────────────
-function TabBar({ activeTab }: { activeTab: string }) {
-  const tabs = [
-    { key: 'inicio',     label: 'Inicio',     emoji: '🏠' },
-    { key: 'mis-paseos', label: 'Mis paseos', emoji: '📅' },
-    { key: 'chat',       label: 'Chat',       emoji: '💬' },
-    { key: 'perfil',     label: 'Perfil',     emoji: '👤' },
-  ];
-  return (
-    <View style={styles.tabBar}>
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.key;
-        return (
-          <TouchableOpacity key={tab.key} style={styles.tabItem}>
-            <Text style={styles.tabEmoji}>{tab.emoji}</Text>
-            <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
-              {tab.label}
-            </Text>
-            {isActive && <View style={styles.tabActiveBar} />}
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
- 
 // ─── PANTALLA PRINCIPAL ──────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
  
-  // Cambiá a [] para ver el estado "sin datos"
-  const [perros]  = useState<Perro[]>(perrosMock);
-  const [paseos]  = useState<PaseoReciente[]>(paseosMock);
+  // Cambiá a [] para ver el estado vacío
+  const [perros] = useState<Perro[]>(perrosMock);
+  const [paseos] = useState<PaseoReciente[]>(paseosMock);
  
   const tienePerros = perros.length > 0;
   const tienePaseos = paseos.length > 0;
  
   function handleServicio(tipo: string) {
-    // Navega a la pantalla CrearPaseo pasando el tipo como param
     router.push({ pathname: '/crear-paseo', params: { tipo } });
   }
  
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
- 
-      {/* Header fijo arriba */}
       <Header tieneNotif={false} />
- 
-      {/* Scroll del contenido */}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -325,9 +277,7 @@ export default function HomeScreen() {
         <SeccionPorQueElegir />
         <View style={{ height: 24 }} />
       </ScrollView>
- 
-      {/* Tab bar fijo abajo */}
-      <TabBar activeTab="inicio" />
+      {/* ↑ Sin TabBar propio — usa la de Expo del _layout.tsx */}
     </SafeAreaView>
   );
 }
@@ -338,49 +288,27 @@ const styles = StyleSheet.create({
   scroll:        { flex: 1 },
   scrollContent: { paddingBottom: 8 },
  
-  // Header
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: WHITE, paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 0.5, borderBottomColor: BORDER,
   },
-  headerLogo:       { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoPlaceholder:  { width: 32, height: 32, borderRadius: 8, backgroundColor: GREEN_LIGHT, alignItems: 'center', justifyContent: 'center' },
-  logoText:         { fontSize: 22, fontWeight: '800', color: TEXT_PRIMARY },
-  headerIcons:      { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  iconBtn:          { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  iconEmoji:        { fontSize: 20 },
-  notifDot:         { position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: 4, backgroundColor: RED },
-  avatarPlaceholder:{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#ddd', borderWidth: 1, borderColor: BORDER },
+  headerLogo:        { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoPlaceholder:   { width: 32, height: 32, borderRadius: 8, backgroundColor: GREEN_LIGHT, alignItems: 'center', justifyContent: 'center' },
+  logoText:          { fontSize: 22, fontWeight: '800', color: TEXT_PRIMARY },
+  headerIcons:       { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  iconBtn:           { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  iconEmoji:         { fontSize: 20 },
+  notifDot:          { position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: 4, backgroundColor: RED },
+  avatarPlaceholder: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#ddd', borderWidth: 1, borderColor: BORDER },
  
-  // Hero banner — ocupa todo el ancho, altura fija
-  heroBanner: {
-    width: '100%',
-    height: 180,
-    backgroundColor: WHITE,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  heroBannerBg: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#e8f5e9',   // tono verde suave hasta que llegue el asset
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBannerEmoji:  { fontSize: 52 },
-  heroOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    // fondo semitransparente para leer el texto sobre la imagen
-    backgroundColor: 'rgba(255,255,255,0.7)',
-  },
-  heroTitle:    { fontSize: 22, fontWeight: '800', color: TEXT_PRIMARY },
-  heroSubtitle: { fontSize: 14, color: TEXT_SECONDARY, marginTop: 2 },
+  heroBanner:    { width: '100%', height: 180, backgroundColor: WHITE, position: 'relative', overflow: 'hidden' },
+  heroBannerBg:  { ...StyleSheet.absoluteFillObject, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
+  heroBannerEmoji:{ fontSize: 52 },
+  heroOverlay:   { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, backgroundColor: 'rgba(255,255,255,0.7)' },
+  heroTitle:     { fontSize: 22, fontWeight: '800', color: TEXT_PRIMARY },
+  heroSubtitle:  { fontSize: 14, color: TEXT_SECONDARY, marginTop: 2 },
  
-  // Secciones
   section:          { paddingHorizontal: 16, marginTop: 16 },
   sectionTitle:     { fontSize: 16, fontWeight: '700', color: TEXT_PRIMARY, marginBottom: 10 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
@@ -388,76 +316,52 @@ const styles = StyleSheet.create({
   card:             { backgroundColor: WHITE, borderRadius: 14, borderWidth: 0.5, borderColor: BORDER, overflow: 'hidden' },
   cardVacio:        { padding: 20, alignItems: 'center' },
  
-  // Servicios
-  serviciosRow:      { flexDirection: 'row', gap: 10 },
-  servicioCard:      { flex: 1, backgroundColor: WHITE, borderRadius: 14, padding: 14, borderWidth: 0.5, borderColor: BORDER },
-  servicioCardPurple:{ backgroundColor: PURPLE_LIGHT },
-  servicioIconWrap:  { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  servicioIconEmoji: { fontSize: 22 },
-  servicioNombre:    { fontSize: 14, fontWeight: '700', color: TEXT_PRIMARY, marginBottom: 4 },
-  servicioDesc:      { fontSize: 12, color: TEXT_SECONDARY, lineHeight: 16, marginBottom: 10, flex: 1 },
-  servicioArrow:     { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' },
-  servicioArrowText: { color: WHITE, fontSize: 16, fontWeight: '700' },
+  serviciosRow:       { flexDirection: 'row', gap: 10 },
+  servicioCard:       { flex: 1, backgroundColor: WHITE, borderRadius: 14, padding: 14, borderWidth: 0.5, borderColor: BORDER },
+  servicioCardPurple: { backgroundColor: PURPLE_LIGHT },
+  servicioIconWrap:   { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  servicioIconEmoji:  { fontSize: 22 },
+  servicioNombre:     { fontSize: 14, fontWeight: '700', color: TEXT_PRIMARY, marginBottom: 4 },
+  servicioDesc:       { fontSize: 12, color: TEXT_SECONDARY, lineHeight: 16, marginBottom: 10, flex: 1 },
+  servicioArrow:      { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' },
+  servicioArrowText:  { color: WHITE, fontSize: 16, fontWeight: '700' },
  
-  // Perros con datos
-  perroRow:           { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  perroRow:            { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   perroFotoPlaceholder:{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
-  perroInfo:          { flex: 1 },
-  perroNombreRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  perroNombre:        { fontSize: 15, fontWeight: '700', color: TEXT_PRIMARY },
-  activoBadge:        { backgroundColor: GREEN_LIGHT, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  activoBadgeText:    { fontSize: 11, color: GREEN_DARK, fontWeight: '600' },
-  perroDetalle:       { fontSize: 12, color: TEXT_MUTED, marginTop: 2 },
-  divider:            { height: 0.5, backgroundColor: BORDER, marginHorizontal: 14 },
-  agregarPerroRow:    { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 8, backgroundColor: GREEN_LIGHT },
-  agregarPerroIcon:   { fontSize: 18, color: GREEN },
-  agregarPerroText:   { flex: 1, fontSize: 14, color: GREEN, fontWeight: '600' },
-  patitasDecorativas: { fontSize: 18, opacity: 0.3 },
-  chevron:            { fontSize: 22, color: TEXT_MUTED, fontWeight: '300' },
+  perroInfo:           { flex: 1 },
+  perroNombreRow:      { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  perroNombre:         { fontSize: 15, fontWeight: '700', color: TEXT_PRIMARY },
+  activoBadge:         { backgroundColor: GREEN_LIGHT, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  activoBadgeText:     { fontSize: 11, color: GREEN_DARK, fontWeight: '600' },
+  perroDetalle:        { fontSize: 12, color: TEXT_MUTED, marginTop: 2 },
+  divider:             { height: 0.5, backgroundColor: BORDER, marginHorizontal: 14 },
+  agregarPerroRow:     { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 8, backgroundColor: GREEN_LIGHT },
+  agregarPerroIcon:    { fontSize: 18, color: GREEN },
+  agregarPerroText:    { flex: 1, fontSize: 14, color: GREEN, fontWeight: '600' },
+  patitasDecorativas:  { fontSize: 18, opacity: 0.3 },
+  chevron:             { fontSize: 22, color: TEXT_MUTED, fontWeight: '300' },
  
-  // Perros vacío
   emptyIlustPlaceholder: { width: 120, height: 80, backgroundColor: GREEN_LIGHT, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   emptyTitle:    { fontSize: 15, fontWeight: '700', color: TEXT_PRIMARY, textAlign: 'center', marginBottom: 6 },
   emptySubtitle: { fontSize: 13, color: TEXT_SECONDARY, textAlign: 'center', lineHeight: 18, marginBottom: 16 },
   agregarPerroBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: GREEN, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 9 },
   agregarPerroBtnText: { fontSize: 14, color: GREEN, fontWeight: '600' },
  
-  // Paseos con datos
-  paseoRow:               { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  paseoRow:                { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   mapaThumbnailPlaceholder:{ width: 70, height: 56, borderRadius: 10, backgroundColor: '#e8f4e8', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
-  paseoInfo:              { flex: 1 },
-  paseoNombre:            { fontSize: 14, fontWeight: '700', color: TEXT_PRIMARY },
-  paseoDetalle:           { fontSize: 12, color: TEXT_MUTED, marginTop: 2, marginBottom: 6 },
-  completadoBadge:        { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: GREEN_LIGHT, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
-  completadoBadgeIcon:    { fontSize: 11, color: GREEN_DARK },
-  completadoBadgeText:    { fontSize: 11, color: GREEN_DARK, fontWeight: '600' },
+  paseoInfo:               { flex: 1 },
+  paseoNombre:             { fontSize: 14, fontWeight: '700', color: TEXT_PRIMARY },
+  paseoDetalle:            { fontSize: 12, color: TEXT_MUTED, marginTop: 2, marginBottom: 6 },
+  completadoBadge:         { backgroundColor: GREEN_LIGHT, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
+  completadoBadgeText:     { fontSize: 11, color: GREEN_DARK, fontWeight: '600' },
+  paseoVacioWrap:          { flexDirection: 'row', alignItems: 'center', padding: 16 },
  
-  // Paseos vacío
-  paseoVacioWrap: { flexDirection: 'row', alignItems: 'center', padding: 16 },
- 
-  // Por qué elegir
   porQueRow:     { flexDirection: 'row', gap: 8 },
   porQueItem:    { flex: 1, alignItems: 'center' },
   porQueIconWrap:{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   porQueTitulo:  { fontSize: 12, fontWeight: '700', color: TEXT_PRIMARY, textAlign: 'center', marginBottom: 4 },
   porQueDesc:    { fontSize: 11, color: TEXT_SECONDARY, textAlign: 'center', lineHeight: 15 },
  
-  // Tab bar fijo
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: WHITE,
-    borderTopWidth: 0.5,
-    borderTopColor: BORDER,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
-    paddingTop: 8,
-  },
-  tabItem:       { flex: 1, alignItems: 'center', gap: 2, position: 'relative' },
-  tabEmoji:      { fontSize: 20 },
-  tabLabel:      { fontSize: 10, color: TEXT_MUTED },
-  tabLabelActive:{ color: GREEN, fontWeight: '700' },
-  tabActiveBar:  { position: 'absolute', bottom: -8, width: 20, height: 3, borderRadius: 2, backgroundColor: GREEN },
- 
-  // Misc
   placeholderLabel: { fontSize: 9, color: TEXT_MUTED, textAlign: 'center', marginTop: 4 },
 });
  
