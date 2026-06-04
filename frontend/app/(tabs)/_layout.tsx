@@ -2,18 +2,41 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
- 
+
 const GREEN      = '#4caf50';
 const TEXT_MUTED = '#999999';
 const WHITE      = '#ffffff';
 const BORDER     = '#e0e0e0';
- 
+
+const TAB_HEIGHT = Platform.select({
+  ios:     84,
+  android: 64,
+  web:     80,
+  default: 64,
+});
+
+const TAB_PADDING_BOTTOM = Platform.select({
+  ios:     24,
+  android: 8,
+  web:     18,
+  default: 8,
+});
+
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: {
+          backgroundColor: WHITE,
+          borderTopWidth: 0.5,
+          borderTopColor: BORDER,
+          height: TAB_HEIGHT,
+          paddingBottom: TAB_PADDING_BOTTOM,
+          paddingTop: 8,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
         tabBarActiveTintColor: GREEN,
         tabBarInactiveTintColor: TEXT_MUTED,
         tabBarLabelStyle: styles.tabLabel,
@@ -56,8 +79,7 @@ export default function TabLayout() {
           ),
         }}
       />
- 
-      {/* Oculta de la tab bar */}
+
       <Tabs.Screen
         name="crear-paseo"
         options={{ href: null }}
@@ -65,18 +87,8 @@ export default function TabLayout() {
     </Tabs>
   );
 }
- 
+
 const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: WHITE,
-    borderTopWidth: 0.5,
-    borderTopColor: BORDER,
-    height: Platform.OS === 'ios' ? 84 : 64,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-    paddingTop: 8,
-    elevation: 0,
-    shadowOpacity: 0,
-  },
   tabItem: {
     paddingTop: 2,
   },
