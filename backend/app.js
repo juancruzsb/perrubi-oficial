@@ -4,7 +4,7 @@ import express from 'express';
 import cors from 'cors';
 
 
-import MapRoutes from './routes/maps.router.js'
+import MapRoutes from './src/routes/maps.router.js'
 
 const app = express();
 
