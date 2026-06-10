@@ -18,7 +18,18 @@ model User {
   name      String?
   password  String
   createdAt DateTime @default(now())
+  review    Int     @default(0)
   dogs      Dog[]
+}
+
+model Walker {
+  id        Int   @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  review    Int     @default(0)
+  walks     Walk[]
 }
 
 model Dog {
@@ -28,4 +39,14 @@ model Dog {
   age       Int
   ownerId   Int
   owner     User   @relation(fields: [ownerId], references: [id])
+  walks     Walk[]
+}
+
+model Walk {
+  id        Int   @id @default(autoincrement())
+  walkerId  Int
+  dogId     Int
+  date      DateTime
+  walker    Walker @relation(fields: [walkerId], references: [id])
+  dog       Dog    @relation(fields: [dogId], references: [id])
 }
