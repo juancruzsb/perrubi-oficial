@@ -20,6 +20,7 @@ model User {
   createdAt DateTime @default(now())
   review    Int     @default(0)
   dogs      Dog[]
+  role      String  @default("user")
 }
 
 model Walker {

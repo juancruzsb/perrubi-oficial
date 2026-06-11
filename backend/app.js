@@ -3,8 +3,8 @@ import 'dotenv/config'
 import express from 'express';
 import cors from 'cors';
 
-
 import MapRoutes from './src/routes/maps.router.js'
+import AuthRoutes from './src/routes/auth.router.js'
 
 const app = express();
 
@@ -18,6 +18,7 @@ app.get('/', (req, res) => {
 })
 
 app.use('/maps', MapRoutes)
+app.use('/auth', AuthRoutes)
 
 app.listen(process.env.PORT, () => {
   console.log(`Servidor corriendo en puerto ${process.env.PORT}`)
