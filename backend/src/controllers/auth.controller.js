@@ -11,6 +11,12 @@ AuthController.register = async (req, res) => {
             return res.status(400).json({ error: 'Faltan campos obligatorios' });
         }
 
+        const existingUser = await AuthService.userLogin({ email: user.email });
+
+        if (existingUser) {
+            return res.status(409).json({ error: 'El usuario ya existe' });
+        }
+
         const hashedPassword = await bcrypt.hash(user.password, 10);
 
         const newUser = await AuthService.register({
@@ -27,20 +33,20 @@ AuthController.register = async (req, res) => {
 }
 
 AuthController.userLogin = async (req, res) => {
-    const user = req.body;
+    const data = req.body;
 
-    if (!user.email || !user.password) {
+    if (!data.email || !data.password) {
         return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
 
     try {
-        const user = await AuthService.userLogin({ email: user.email });
+        const user = await AuthService.userLogin({ email: data.email });
 
         if (!user) {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
 
-        const passwordMatch = await bcrypt.compare(req.body.password, user.password);
+        const passwordMatch = await bcrypt.compare(data.password, user.password);
 
         if (!passwordMatch) {
             return res.status(401).json({ error: 'Credenciales inválidas' });
