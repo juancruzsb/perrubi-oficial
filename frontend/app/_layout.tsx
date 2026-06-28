@@ -1,8 +1,7 @@
-// Este archivo va en app/_layout.tsx (el ROOT, no el de tabs)
 import { Stack } from 'expo-router';
 import React from 'react';
 import { Platform, View, StyleSheet } from 'react-native';
- 
+
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   if (Platform.OS === 'web') {
     return (
@@ -19,15 +18,20 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
   }
   return <>{children}</>;
 }
- 
+
 export default function RootLayout() {
   return (
     <PhoneFrame>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" />
+        <Stack.Screen name="login-form" />
+        <Stack.Screen name="registro" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
     </PhoneFrame>
   );
 }
- 
+
 const styles = StyleSheet.create({
   webBg: {
     flex: 1,
