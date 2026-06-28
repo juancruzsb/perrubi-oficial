@@ -8,7 +8,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
  
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN        = '#4caf50';
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   avatarPlaceholder: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#ddd', borderWidth: 1, borderColor: BORDER },
  
   heroBanner:    { width: '100%', height: 180, backgroundColor: WHITE, position: 'relative', overflow: 'hidden' },
-  heroBannerBg:  { ...StyleSheet.absoluteFillObject, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
+  heroBannerBg:  { ...StyleSheet.absoluteFill, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
   heroBannerEmoji:{ fontSize: 52 },
   heroOverlay:   { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, backgroundColor: 'rgba(255,255,255,0.7)' },
   heroTitle:     { fontSize: 22, fontWeight: '800', color: TEXT_PRIMARY },

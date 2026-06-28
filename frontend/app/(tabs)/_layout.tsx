@@ -84,6 +84,12 @@ export default function TabLayout() {
         name="crear-paseo"
         options={{ href: null }}
       />
+      
+      <Tabs.Screen
+      name="agregar-perro"
+      options={{ href: null }}
+      />
+  
     </Tabs>
   );
 }
