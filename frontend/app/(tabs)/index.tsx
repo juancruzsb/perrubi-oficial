@@ -118,7 +118,7 @@ function SeccionServicios({ onServicio }: { onServicio: (tipo: string) => void }
 }
  
 // ─── TU PERRO — CON DATOS ────────────────────────────────────
-function SeccionPerrosConDatos({ perros }: { perros: Perro[] }) {
+function SeccionPerrosConDatos({ perros, onAgregar }: { perros: Perro[], onAgregar: () => void }) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Tu perro</Text>
@@ -141,7 +141,7 @@ function SeccionPerrosConDatos({ perros }: { perros: Perro[] }) {
           </TouchableOpacity>
         ))}
         <View style={styles.divider} />
-        <TouchableOpacity style={styles.agregarPerroRow}>
+        <TouchableOpacity style={styles.agregarPerroRow} onPress={onAgregar}>
           <Text style={styles.agregarPerroIcon}>⊕</Text>
           <Text style={styles.agregarPerroText}>Agregar otro perro</Text>
           <Text style={styles.patitasDecorativas}>🐾</Text>
@@ -153,7 +153,7 @@ function SeccionPerrosConDatos({ perros }: { perros: Perro[] }) {
 }
  
 // ─── TU PERRO — VACÍO ────────────────────────────────────────
-function SeccionPerrosVacia() {
+function SeccionPerrosVacia({ onAgregar }: { onAgregar: () => void }) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Tu perro</Text>
@@ -164,7 +164,7 @@ function SeccionPerrosVacia() {
         </View>
         <Text style={styles.emptyTitle}>Aún no agregaste un perro</Text>
         <Text style={styles.emptySubtitle}>Agregá a tu compañero para empezar a planificar sus paseos.</Text>
-        <TouchableOpacity style={styles.agregarPerroBtn}>
+        <TouchableOpacity style={styles.agregarPerroBtn} onPress={onAgregar}>
           <Text style={styles.agregarPerroIcon}>⊕</Text>
           <Text style={styles.agregarPerroBtnText}>Agregar otro perro</Text>
         </TouchableOpacity>
@@ -260,7 +260,11 @@ export default function HomeScreen() {
   function handleServicio(tipo: string) {
     router.push({ pathname: '/crear-paseo', params: { tipo } });
   }
- 
+
+  function handleAgregarPerro() {
+    router.push('/agregar-perro' as any);
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
@@ -272,7 +276,7 @@ export default function HomeScreen() {
       >
         <HeroBanner />
         <SeccionServicios onServicio={handleServicio} />
-        {tienePerros ? <SeccionPerrosConDatos perros={perros} /> : <SeccionPerrosVacia />}
+        {tienePerros ? <SeccionPerrosConDatos perros={perros} onAgregar={handleAgregarPerro} /> : <SeccionPerrosVacia onAgregar={handleAgregarPerro} />}
         {tienePaseos ? <SeccionPaseosConDatos paseos={paseos} /> : <SeccionPaseosVacio />}
         <SeccionPorQueElegir />
         <View style={{ height: 24 }} />
@@ -364,4 +368,3 @@ const styles = StyleSheet.create({
  
   placeholderLabel: { fontSize: 9, color: TEXT_MUTED, textAlign: 'center', marginTop: 4 },
 });
- 
