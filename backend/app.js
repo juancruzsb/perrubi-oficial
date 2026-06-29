@@ -5,6 +5,7 @@ import cors from 'cors';
 
 import MapRoutes from './src/routes/maps.router.js'
 import AuthRoutes from './src/routes/auth.router.js'
+import DogsRoutes from './src/routes/dogs.router.js'
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.get('/', (req, res) => {
 
 app.use('/maps', MapRoutes)
 app.use('/auth', AuthRoutes)
+app.use('/dogs', DogsRoutes)
 
 app.listen(process.env.PORT, () => {
   console.log(`Servidor corriendo en puerto ${process.env.PORT}`)
