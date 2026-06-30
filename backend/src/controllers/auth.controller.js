@@ -64,7 +64,7 @@ AuthController.userLogin = async (req, res) => {
             issuer: 'perrubi'
         }
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET_USER, options);
+        const token = jwt.sign(payload, process.env.JWT_SECRET, options);
 
         return res.status(200).json({ message: 'Login exitoso', token, user });
     } catch (error) {
@@ -134,7 +134,7 @@ AuthController.walkerLogin = async (req, res) => {
             issuer: 'perrubi'
         }
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET_WALKER, options);
+        const token = jwt.sign(payload, process.env.JWT_SECRET, options);
 
         return res.status(200).json({ message: 'Login exitoso', token, walker });
     } catch (error) {
