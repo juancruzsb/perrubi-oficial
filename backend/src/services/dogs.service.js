@@ -30,4 +30,29 @@ DogsService.createDog = async (dogData) => {
     return newDog
 }
 
+DogsService.updateDog = async (dogId, dogData) => {
+    const updatedDog = await prisma.dog.update({
+        where: {
+            id: parseInt(dogId)
+        },
+        data: {
+            name: dogData.name,
+            breed: dogData.breed,
+            age: dogData.age
+        }
+    })
+    console.log(updatedDog)
+    return updatedDog
+}
+
+DogsService.deleteDog = async (dogId) => {
+    const deletedDog = await prisma.dog.delete({
+        where: {
+            id: parseInt(dogId)
+        }
+    })
+    console.log(deletedDog)
+    return deletedDog
+}
+
 export default DogsService

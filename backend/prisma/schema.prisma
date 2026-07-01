@@ -19,6 +19,7 @@ model User {
   createdAt DateTime @default(now())
   review    Int     @default(0)
   dogs      Dog[]
+  directions UserDirections[]
   role      String  @default("user")
 }
 
@@ -49,4 +50,12 @@ model Walk {
   date      DateTime
   walker    Walker @relation(fields: [walkerId], references: [id])
   dog       Dog    @relation(fields: [dogId], references: [id])
+}
+
+model UserDirections {
+  id        Int   @id @default(autoincrement())
+  latitude  Float
+  longitude Float
+  userId    Int
+  user      User   @relation(fields: [userId], references: [id])
 }

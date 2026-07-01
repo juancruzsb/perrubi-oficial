@@ -49,4 +49,31 @@ DogsController.createDog = async (req, res) => {
     }   
 }
 
+DogsController.updateDog = async (req, res) => {
+    const dogId = req.params.id
+    const dogData = req.body
+    try {
+        const updatedDog = await DogsService.updateDog(dogId, dogData)
+        if (!updatedDog) {
+            return res.status(404).json({ message: 'Dog not found' })
+        }
+        res.status(200).json(updatedDog)
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+}
+
+DogsController.deleteDog = async (req, res) => {
+    const dogId = req.params.id
+    try {
+        const deletedDog = await DogsService.deleteDog(dogId)
+        if (!deletedDog) {
+            return res.status(404).json({ message: 'Dog not found' })
+        }
+        res.status(200).json({ message: 'Dog deleted successfully' })
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+}
+
 export default DogsController
