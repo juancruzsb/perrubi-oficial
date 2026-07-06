@@ -8,7 +8,7 @@ router.get('/', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyAdmin, DogsCo
 router.get('/user', AuthMiddlewares.verifyToken, DogsController.getCurrentUserDogs)
 router.get('/:id', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyAdmin, DogsController.getDogsByUser)
 router.post('/', AuthMiddlewares.verifyToken, DogsController.createDog)
-//router.put('/:id', AuthMiddlewares.verifyToken, DogsController.updateDog)
-//router.delete('/:id', AuthMiddlewares.verifyToken, DogsController.deleteDog)
+router.put('/:id', AuthMiddlewares.verifyToken, DogsController.updateDog)
+router.delete('/:id', AuthMiddlewares.verifyToken, DogsController.deleteDog)
 
 export default router;

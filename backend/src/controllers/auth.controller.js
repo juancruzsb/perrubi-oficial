@@ -7,7 +7,7 @@ AuthController.userRegister = async (req, res) => {
     const user = req.body;
 
     try {
-        if (!user.name || !user.email || !user.password) {
+        if (!user.firstName || !user.email || !user.password) {
             return res.status(400).json({ error: 'Faltan campos obligatorios' });
         }
 
@@ -20,9 +20,10 @@ AuthController.userRegister = async (req, res) => {
         const hashedPassword = await bcrypt.hash(user.password, 10);
 
         const newUser = await AuthService.userRegister({
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName? user.lastName : null,
             email: user.email,
-            password: hashedPassword,
+            passwordHash: hashedPassword,
         })
 
         return res.status(201).json({ message: 'Usuario registrado exitosamente', user: newUser });
@@ -46,7 +47,7 @@ AuthController.userLogin = async (req, res) => {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
 
-        const passwordMatch = await bcrypt.compare(data.password, user.password);
+        const passwordMatch = await bcrypt.compare(data.password, user.passwordHash);
 
         if (!passwordMatch) {
             return res.status(401).json({ error: 'Credenciales inválidas' });
@@ -54,7 +55,8 @@ AuthController.userLogin = async (req, res) => {
 
         const payload = {
             id: user.id,
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
             email: user.email,
             role: user.role
         }
@@ -90,9 +92,10 @@ AuthController.walkerRegister = async (req, res) => {
         const hashedPassword = await bcrypt.hash(walker.password, 10);
 
         const newWalker = await AuthService.walkerRegister({
-            name: walker.name,
+            firstName: walker.firstName,
+            lastName: walker.lastName? walker.lastName : null,
             email: walker.email,
-            password: hashedPassword,
+            passwordHash: hashedPassword,
         })
 
         return res.status(201).json({ message: 'Paseador registrado exitosamente', walker: newWalker });

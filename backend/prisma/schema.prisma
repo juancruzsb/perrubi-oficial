@@ -12,51 +12,111 @@ datasource db {
 }
 
 model User {
-  id        Int   @id @default(autoincrement())
-  email     String   @unique
-  name      String?
-  password  String
-  createdAt DateTime @default(now())
-  review    Int     @default(0)
-  dogs      Dog[]
-  directions UserDirections[]
-  role      String  @default("user")
-}
+  id           Int        @id @default(autoincrement())
+  firstName    String?    @map("first_name")
+  lastName     String?    @map("last_name")
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  role         String?    // 'admin' o 'user'
+  phone        String?
+  addresses    Address[]
+  dogs         UserDog[]
+  walks        WalkUser[]
 
-model Walker {
-  id        Int   @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  review    Int     @default(0)
-  walks     Walk[]
+  @@map("user")
 }
 
 model Dog {
-  id        Int   @id @default(autoincrement())
-  name      String
-  breed     String
-  age       Int
-  ownerId   Int
-  owner     User   @relation(fields: [ownerId], references: [id])
-  walks     Walk[]
+  id         Int       @id @default(autoincrement())
+  name       String
+  age        Int?
+  breed      String?
+  gender     String?
+  weight     Decimal?
+  extraNotes String?   @map("extra_notes")
+  photo      String?
+  review     String?
+  users      UserDog[]
+  walks      WalkDog[]
+
+  @@map("dog")
+}
+
+model UserDog {
+  id     Int  @id @default(autoincrement())
+  userId Int  @map("user_id")
+  dogId  Int  @map("dog_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dog    Dog  @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("user_dog")
+}
+
+model Walker {
+  id             Int     @id @default(autoincrement())
+  firstName      String? @map("first_name")
+  lastName       String? @map("last_name")
+  email          String  @unique
+  phone          String?
+  passwordHash   String  @map("password_hash")
+  averageRating  Decimal? @map("average_rating")
+  reviewCount    Int?    @map("review_count")
+  role           String? // 'admin' o 'user'
+  profilePicture String? @map("profile_picture")
+  description    String?
+  walks          Walk[]
+
+  @@map("walker")
 }
 
 model Walk {
-  id        Int   @id @default(autoincrement())
-  walkerId  Int
-  dogId     Int
-  date      DateTime
-  walker    Walker @relation(fields: [walkerId], references: [id])
-  dog       Dog    @relation(fields: [dogId], references: [id])
+  id        Int        @id @default(autoincrement())
+  walkerId  Int        @map("walker_id")
+  walker    Walker     @relation(fields: [walkerId], references: [id])
+  walkType  String?    @map("walk_type") // 'individual', 'group'
+  status    String?    // 'accepted', 'in_progress', 'finished', 'canceled', 'searching'
+  price     Decimal?
+  startTime DateTime?  @map("start_time")
+  duration  Int?       // en minutos
+  endTime   DateTime?  @map("end_time")
+  dogs      WalkDog[]
+  users     WalkUser[]
+
+  @@map("walk")
 }
 
-model UserDirections {
-  id        Int   @id @default(autoincrement())
-  latitude  Float
-  longitude Float
-  userId    Int
-  user      User   @relation(fields: [userId], references: [id])
-  name      String
+model WalkDog {
+  id     Int  @id @default(autoincrement())
+  walkId Int  @map("walk_id")
+  dogId  Int  @map("dog_id")
+  walk   Walk @relation(fields: [walkId], references: [id], onDelete: Cascade)
+  dog    Dog  @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("walk_dog")
+}
+
+model WalkUser {
+  id     Int  @id @default(autoincrement())
+  walkId Int  @map("walk_id")
+  userId Int  @map("user_id")
+  walk   Walk @relation(fields: [walkId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("walk_user")
+}
+
+model Address {
+  id        Int     @id @default(autoincrement())
+  userId    Int     @map("user_id")
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String?
+  street    String?
+  number    String?
+  floorApt  String? @map("floor_apt")
+  city      String?
+  zipCode   String? @map("zip_code")
+  latitude  Float?
+  longitude Float?
+
+  @@map("address")
 }

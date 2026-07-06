@@ -4,9 +4,10 @@ import prisma from '../../db.js'
 AuthService.userRegister = async (user) => {
     const newUser = await prisma.user.create({
         data: {
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName? user.lastName : null,
             email: user.email,
-            password: user.password,
+            passwordHash: user.passwordHash,
         }
     })
     console.log(newUser)
@@ -26,9 +27,10 @@ AuthService.userLogin = async (credentials) => {
 AuthService.walkerRegister = async (walker) => {
     const newWalker = await prisma.walker.create({
         data: {
-            name: walker.name,
+            firstName: walker.firstName,
+            lastName: walker.lastName? walker.lastName : null,
             email: walker.email,
-            password: walker.password,
+            passwordHash: walker.passwordHash,
         }
     })
     console.log(newWalker)
