@@ -90,28 +90,32 @@ function SeccionServicios({ onServicio }: { onServicio: (tipo: string) => void }
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>¿Qué servicio necesitas?</Text>
-      <View style={styles.serviciosRow}>
-        <TouchableOpacity style={styles.servicioCard} onPress={() => onServicio('paseo')}>
-          <View style={[styles.servicioIconWrap, { backgroundColor: GREEN_LIGHT }]}>
-            <Text style={styles.servicioIconEmoji}>🐾</Text>
-          </View>
-          <Text style={styles.servicioNombre}>Paseo</Text>
-          <Text style={styles.servicioDesc}>Paseos seguros y divertidos para tu perro</Text>
-          <View style={[styles.servicioArrow, { backgroundColor: GREEN }]}>
-            <Text style={styles.servicioArrowText}>→</Text>
-          </View>
-        </TouchableOpacity>
- 
-        <TouchableOpacity style={[styles.servicioCard, styles.servicioCardPurple]} onPress={() => onServicio('adiestramiento')}>
-          <View style={[styles.servicioIconWrap, { backgroundColor: PURPLE_LIGHT }]}>
-            <Text style={styles.servicioIconEmoji}>🎓</Text>
-          </View>
-          <Text style={styles.servicioNombre}>Paseo +{'\n'}Adiestramiento</Text>
-          <Text style={styles.servicioDesc}>Ejercicio y entrenamiento en cada paseo</Text>
-          <View style={[styles.servicioArrow, { backgroundColor: PURPLE }]}>
-            <Text style={styles.servicioArrowText}>→</Text>
-          </View>
-        </TouchableOpacity>
+      <View style={styles.serviciosContainer}>
+        <View style={styles.serviciosRow}>
+
+          <TouchableOpacity style={styles.servicioCard} onPress={() => onServicio('paseo')}>
+            <View style={[styles.servicioIconWrap, { backgroundColor: GREEN_LIGHT }]}>
+              <Text style={styles.servicioIconEmoji}>🐾</Text>
+            </View>
+            <Text style={styles.servicioNombre}>Paseo</Text>
+            <Text style={styles.servicioDesc}>Paseos seguros y divertidos para tu perro</Text>
+            <View style={[styles.servicioArrow, { backgroundColor: GREEN }]}>
+              <Text style={styles.servicioArrowText}>→</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.servicioCard, styles.servicioCardPurple]} onPress={() => onServicio('adiestramiento')}>
+            <View style={[styles.servicioIconWrap, { backgroundColor: '#e9d5ff' }]}>
+              <Text style={styles.servicioIconEmoji}>🎓</Text>
+            </View>
+            <Text style={styles.servicioNombre}>{'Paseo +\nAdiestramiento'}</Text>
+            <Text style={styles.servicioDesc}>Ejercicio y entrenamiento en cada paseo</Text>
+            <View style={[styles.servicioArrow, { backgroundColor: PURPLE }]}>
+              <Text style={styles.servicioArrowText}>→</Text>
+            </View>
+          </TouchableOpacity>
+
+        </View>
       </View>
     </View>
   );
@@ -320,15 +324,16 @@ const styles = StyleSheet.create({
   card:             { backgroundColor: WHITE, borderRadius: 14, borderWidth: 0.5, borderColor: BORDER, overflow: 'hidden' },
   cardVacio:        { padding: 20, alignItems: 'center' },
  
+  serviciosContainer: { backgroundColor: WHITE, borderRadius: 16, borderWidth: 0.5, borderColor: BORDER, padding: 12 },
   serviciosRow:       { flexDirection: 'row', gap: 10 },
-  servicioCard:       { flex: 1, backgroundColor: WHITE, borderRadius: 14, padding: 14, borderWidth: 0.5, borderColor: BORDER },
-  servicioCardPurple: { backgroundColor: PURPLE_LIGHT },
-  servicioIconWrap:   { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  servicioIconEmoji:  { fontSize: 22 },
-  servicioNombre:     { fontSize: 14, fontWeight: '700', color: TEXT_PRIMARY, marginBottom: 4 },
-  servicioDesc:       { fontSize: 12, color: TEXT_SECONDARY, lineHeight: 16, marginBottom: 10, flex: 1 },
-  servicioArrow:      { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' },
-  servicioArrowText:  { color: WHITE, fontSize: 16, fontWeight: '700' },
+  servicioCard:       { width: 171, height: 122, backgroundColor: WHITE, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: BORDER },
+  servicioCardPurple: { backgroundColor: PURPLE_LIGHT, borderColor: '#ddd6fe' },
+  servicioIconWrap:   { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  servicioIconEmoji:  { fontSize: 24 },
+  servicioNombre:     { fontSize: 14, fontWeight: '700', color: TEXT_PRIMARY, marginTop: 8, marginBottom: 4 },
+  servicioDesc:       { fontSize: 12, color: TEXT_SECONDARY, lineHeight: 16, flex: 1 },
+  servicioArrow:      { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' },
+  servicioArrowText:  { color: WHITE, fontSize: 18, fontWeight: '700' },
  
   perroRow:            { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   perroFotoPlaceholder:{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },

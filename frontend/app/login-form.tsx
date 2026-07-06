@@ -1,19 +1,13 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
-  Platform,
-  ScrollView,
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, SafeAreaView, StatusBar,
+  ScrollView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { register, login } from '../api/auth';
 
 const GREEN        = '#4caf50';
-const GREEN_LIGHT  = '#e8f5e9';
 const WHITE        = '#ffffff';
 const BG           = '#f7f7f7';
 const TEXT_PRIMARY = '#1a1a1a';
@@ -21,152 +15,180 @@ const TEXT_SECONDARY = '#666666';
 const TEXT_MUTED   = '#aaaaaa';
 const BORDER       = '#e0e0e0';
 const BORDER_FOCUS = '#4caf50';
+const RED          = '#ef4444';
 
-export default function LoginFormScreen() {
+export default function RegistroScreen() {
   const router = useRouter();
-  const [email, setEmail]               = useState('');
-  const [password, setPassword]         = useState('');
-  const [showPass, setShowPass]         = useState(false);
-  const [recordarme, setRecordarme]     = useState(false);
-  const [emailFocus, setEmailFocus]     = useState(false);
-  const [passFocus, setPassFocus]       = useState(false);
 
-  const handleEntrar = () => {
-    router.replace('/(tabs)');
+  const [nombre,   setNombre]   = useState('');
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmar,setConfirmar]= useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [showConf, setShowConf] = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState('');
+
+  const [nombreFocus,  setNombreFocus]  = useState(false);
+  const [emailFocus,   setEmailFocus]   = useState(false);
+  const [passFocus,    setPassFocus]    = useState(false);
+  const [confirmFocus, setConfirmFocus] = useState(false);
+
+  const handleRegistrar = async () => {
+    setError('');
+
+    if (!nombre || !email || !password || !confirmar) {
+      setError('Por favor completá todos los campos.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (password !== confirmar) {
+      setError('Las contraseñas no coinciden.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // 1. Registra el usuario
+      await register({ name: nombre, email, password });
+      // 2. Hace login automático (el register no devuelve token)
+      await login({ email, password });
+      // 3. Va directo al home
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      setError(err.message || 'Error al registrarse. Intentá de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
+
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.backArrow}>←</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-
-        {/* ── LOGO ── */}
         <View style={styles.logoSection}>
-          {/*
-            TODO: reemplazar por:
-            <Image source={require('@/assets/images/logo-pin.png')} style={styles.logoImg} />
-          */}
-          <View style={styles.pinWrap}>
-            <View style={styles.pinCircle}>
-              <Text style={styles.pinEmoji}>🐾</Text>
-            </View>
-            <View style={styles.pinTip} />
-            <View style={styles.pinDot} />
+          <View style={styles.pinCircle}>
+            <Text style={styles.pinEmoji}>📍</Text>
           </View>
-
-          <Text style={styles.logoText}>Perrubi</Text>
           <Text style={styles.tagline}>
-            Inicia sesión para continuar con los{'\n'}
-            <Text style={styles.taglineGreen}>paseos seguros</Text>
-            <Text style={styles.taglineDot}>.</Text>
+            Registrate para encontrar los mejores{'\n'}paseadores para tu mascota.
           </Text>
-
-          {/* pata decorativa de fondo */}
-          {/* TODO: <Image source={require('@/assets/images/pata-watermark.png')} style={styles.watermark} /> */}
         </View>
 
-        {/* ── FORMULARIO ── */}
         <View style={styles.formSection}>
 
-          {/* Email */}
-          <Text style={styles.inputLabel}>Correo electrónico</Text>
-          <View style={[styles.inputWrap, emailFocus && styles.inputWrapFocus]}>
-            {/* TODO: <Image source={require('@/assets/icons/email.png')} style={styles.inputIcon} /> */}
-            <Text style={styles.inputIconEmoji}>✉️</Text>
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          <Text style={styles.label}>Nombre completo</Text>
+          <View style={[styles.inputWrap, nombreFocus && styles.inputWrapFocus]}>
+            <Text style={styles.inputIcon}>👤</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="tu@email.com"
+              placeholder="Tu nombre y apellido"
+              placeholderTextColor={TEXT_MUTED}
+              autoCapitalize="words"
+              value={nombre}
+              onChangeText={(t) => { setNombre(t); setError(''); }}
+              onFocus={() => setNombreFocus(true)}
+              onBlur={() => setNombreFocus(false)}
+            />
+          </View>
+
+          <Text style={styles.label}>Email</Text>
+          <View style={[styles.inputWrap, emailFocus && styles.inputWrapFocus]}>
+            <Text style={styles.inputIcon}>✉️</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="ejemplo@email.com"
               placeholderTextColor={TEXT_MUTED}
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(t) => { setEmail(t); setError(''); }}
               onFocus={() => setEmailFocus(true)}
               onBlur={() => setEmailFocus(false)}
             />
           </View>
 
-          {/* Contraseña */}
-          <View style={styles.passLabelRow}>
-            <Text style={styles.inputLabel}>Contraseña</Text>
-            <TouchableOpacity>
-              <Text style={styles.olvidaste}>¿Olvidate tu contraseña?</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.label}>Contraseña</Text>
           <View style={[styles.inputWrap, passFocus && styles.inputWrapFocus]}>
-            {/* TODO: <Image source={require('@/assets/icons/lock.png')} style={styles.inputIcon} /> */}
-            <Text style={styles.inputIconEmoji}>🔒</Text>
+            <Text style={styles.inputIcon}>🔒</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="••••••••"
+              placeholder="Mínimo 8 caracteres"
               placeholderTextColor={TEXT_MUTED}
               secureTextEntry={!showPass}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(t) => { setPassword(t); setError(''); }}
               onFocus={() => setPassFocus(true)}
               onBlur={() => setPassFocus(false)}
             />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)} style={styles.eyeBtn}>
-              {/* TODO: <Image source={require('@/assets/icons/eye.png')} style={styles.inputIcon} /> */}
-              <Text style={styles.inputIconEmoji}>{showPass ? '🙈' : '👁️'}</Text>
+            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+              <Text style={styles.inputIcon}>{showPass ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Recordarme */}
-          <TouchableOpacity
-            style={styles.recordarmeRow}
-            onPress={() => setRecordarme(!recordarme)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.checkbox, recordarme && styles.checkboxActive]}>
-              {recordarme && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={styles.recordarmeText}>Recordarme en este dispositivo</Text>
-          </TouchableOpacity>
+          <Text style={styles.label}>Confirmar contraseña</Text>
+          <View style={[styles.inputWrap, confirmFocus && styles.inputWrapFocus]}>
+            <Text style={styles.inputIcon}>🛡️</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Repetí tu contraseña"
+              placeholderTextColor={TEXT_MUTED}
+              secureTextEntry={!showConf}
+              value={confirmar}
+              onChangeText={(t) => { setConfirmar(t); setError(''); }}
+              onFocus={() => setConfirmFocus(true)}
+              onBlur={() => setConfirmFocus(false)}
+            />
+            <TouchableOpacity onPress={() => setShowConf(!showConf)}>
+              <Text style={styles.inputIcon}>{showConf ? '🙈' : '👁️'}</Text>
+            </TouchableOpacity>
+          </View>
 
-          {/* Botón Entrar */}
           <TouchableOpacity
-            style={styles.btnEntrar}
-            onPress={handleEntrar}
+            style={[styles.btnRegistrar, loading && styles.btnDisabled]}
+            onPress={handleRegistrar}
             activeOpacity={0.85}
+            disabled={loading}
           >
-            <Text style={styles.btnEntrarText}>Entrar</Text>
-            <Text style={styles.btnArrow}>→</Text>
+            {loading
+              ? <ActivityIndicator color={WHITE} />
+              : <Text style={styles.btnRegistrarText}>Registrarme  →</Text>
+            }
           </TouchableOpacity>
 
-          {/* Divisor */}
           <View style={styles.divisorRow}>
             <View style={styles.divisorLine} />
-            <Text style={styles.divisorText}>O CONTINÚA CON</Text>
+            <Text style={styles.divisorText}>YA TENGO CUENTA</Text>
             <View style={styles.divisorLine} />
           </View>
 
-          {/* Google */}
-          <TouchableOpacity style={styles.btnGoogle} activeOpacity={0.85}>
-            {/* TODO: <Image source={require('@/assets/icons/google.png')} style={{width:20,height:20}} /> */}
-            <Text style={styles.googleG}>G</Text>
-            <Text style={styles.btnGoogleText}>Continuar con Google</Text>
+          <TouchableOpacity
+            style={styles.btnIniciar}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.btnIniciarText}>Iniciar sesión</Text>
+            <Text style={styles.btnIniciarIcon}>→]</Text>
           </TouchableOpacity>
-
-          {/* Crear cuenta */}
-          <View style={styles.crearCuentaRow}>
-            <Text style={styles.crearCuentaTexto}>¿No tienes una cuenta? </Text>
-            <TouchableOpacity>
-              <Text style={styles.crearCuentaLink}>Crear cuenta</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Seguridad */}
-          <View style={styles.seguridadRow}>
-            {/* TODO: <Image source={require('@/assets/icons/shield.png')} style={{width:14,height:14,tintColor:TEXT_MUTED}} /> */}
-            <Text style={styles.seguridadIcon}>🛡️</Text>
-            <Text style={styles.seguridadText}>Conexión segura y encriptada</Text>
-          </View>
-
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -175,115 +197,57 @@ export default function LoginFormScreen() {
 
 const styles = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: BG },
-  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 32 },
+  header: { paddingHorizontal: 20, paddingVertical: 12 },
+  backArrow: { fontSize: 22, color: TEXT_PRIMARY },
+  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
 
-  // Logo / hero
-  logoSection: { alignItems: 'center', marginBottom: 32 },
-
-  pinWrap:   { alignItems: 'center', marginBottom: 16 },
+  logoSection: { alignItems: 'center', marginBottom: 28 },
   pinCircle: {
-    width: 72, height: 72,
-    borderRadius: 36,
-    borderBottomRightRadius: 4,
-    backgroundColor: GREEN,
-    alignItems: 'center', justifyContent: 'center',
-    transform: [{ rotate: '45deg' }],
-    shadowColor: GREEN,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
+    width: 72, height: 72, borderRadius: 36, borderBottomRightRadius: 4,
+    backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center',
+    transform: [{ rotate: '45deg' }], marginBottom: 16,
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
   },
-  pinEmoji: { fontSize: 30, transform: [{ rotate: '-45deg' }] },
-  pinTip:   { width: 0, height: 0 }, // la punta la hace el borderRadius asimétrico
-  pinDot:   { width: 8, height: 8, borderRadius: 4, backgroundColor: GREEN, marginTop: 2 },
+  pinEmoji: { fontSize: 28, transform: [{ rotate: '-45deg' }] },
+  tagline:  { fontSize: 15, color: TEXT_PRIMARY, textAlign: 'center', lineHeight: 22, fontWeight: '500' },
+  taglineGreen: { color: GREEN, fontWeight: '600' },
 
-  logoText: { fontSize: 38, fontWeight: '800', color: TEXT_PRIMARY, marginBottom: 8 },
-  tagline:  { fontSize: 15, color: TEXT_PRIMARY, textAlign: 'center', lineHeight: 22 },
-  taglineGreen: { color: GREEN, fontWeight: '700' },
-  taglineDot:   { color: TEXT_PRIMARY, fontWeight: '700' },
-
-  // Formulario
   formSection: { gap: 0 },
 
-  inputLabel: { fontSize: 13, fontWeight: '600', color: TEXT_SECONDARY, marginBottom: 6 },
-
-  passLabelRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 6, marginTop: 16,
+  errorBanner: {
+    backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca',
+    borderRadius: 10, padding: 12, marginBottom: 12,
   },
-  olvidaste: { fontSize: 12, color: GREEN, fontWeight: '600' },
+  errorText: { fontSize: 13, color: RED, textAlign: 'center' },
 
+  label:    { fontSize: 13, fontWeight: '600', color: TEXT_SECONDARY, marginBottom: 6, marginTop: 14 },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: WHITE,
-    borderWidth: 1.5, borderColor: BORDER, borderRadius: 12,
-    paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 14 : 10,
-    marginBottom: 0,
-    gap: 10,
+    backgroundColor: WHITE, borderWidth: 1.5, borderColor: BORDER, borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 14 : 10, gap: 10,
   },
   inputWrapFocus: { borderColor: BORDER_FOCUS },
-  inputIconEmoji: { fontSize: 16 },
-  textInput:      { flex: 1, fontSize: 14, color: TEXT_PRIMARY },
-  eyeBtn:         { padding: 2 },
+  inputIcon:  { fontSize: 16 },
+  textInput:  { flex: 1, fontSize: 14, color: TEXT_PRIMARY },
 
-  // Recordarme
-  recordarmeRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginTop: 14, marginBottom: 20,
+  btnRegistrar: {
+    backgroundColor: GREEN, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    marginTop: 24,
+    shadowColor: GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 4,
   },
-  checkbox: {
-    width: 18, height: 18, borderRadius: 4,
-    borderWidth: 1.5, borderColor: BORDER,
-    backgroundColor: WHITE,
-    alignItems: 'center', justifyContent: 'center',
+  btnDisabled:      { opacity: 0.7 },
+  btnRegistrarText: { fontSize: 17, fontWeight: '700', color: WHITE },
+  btnArrow:         { fontSize: 20, color: WHITE, fontWeight: '700' },
+
+  divisorRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 20 },
+  divisorLine: { flex: 1, height: 0.5, backgroundColor: BORDER },
+  divisorText: { fontSize: 11, color: TEXT_MUTED, letterSpacing: 0.5 },
+
+  btnIniciar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: WHITE, borderWidth: 1.5, borderColor: GREEN, borderRadius: 14, paddingVertical: 14,
   },
-  checkboxActive: { backgroundColor: GREEN, borderColor: GREEN },
-  checkmark:      { fontSize: 11, color: WHITE, fontWeight: '800' },
-  recordarmeText: { fontSize: 13, color: TEXT_SECONDARY },
-
-  // Botón entrar
-  btnEntrar: {
-    backgroundColor: GREEN,
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: GREEN,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
-    marginBottom: 24,
-  },
-  btnEntrarText: { fontSize: 17, fontWeight: '700', color: WHITE },
-  btnArrow:      { fontSize: 20, color: WHITE, fontWeight: '700' },
-
-  // Divisor
-  divisorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-  divisorLine:{ flex: 1, height: 0.5, backgroundColor: BORDER },
-  divisorText:{ fontSize: 11, color: TEXT_MUTED, letterSpacing: 0.5 },
-
-  // Google
-  btnGoogle: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
-    backgroundColor: WHITE,
-    borderWidth: 1.5, borderColor: BORDER, borderRadius: 14,
-    paddingVertical: 14,
-    marginBottom: 20,
-  },
-  googleG:       { fontSize: 18, fontWeight: '800', color: '#4285F4' },
-  btnGoogleText: { fontSize: 15, fontWeight: '600', color: TEXT_PRIMARY },
-
-  // Crear cuenta
-  crearCuentaRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  crearCuentaTexto:{ fontSize: 13, color: TEXT_SECONDARY },
-  crearCuentaLink: { fontSize: 13, color: GREEN, fontWeight: '700' },
-
-  // Seguridad
-  seguridadRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
-  seguridadIcon:{ fontSize: 12 },
-  seguridadText:{ fontSize: 11, color: TEXT_MUTED },
+  btnIniciarText: { fontSize: 15, fontWeight: '700', color: GREEN },
+  btnIniciarIcon: { fontSize: 15, color: GREEN, fontWeight: '700', marginLeft: 4 },
 });

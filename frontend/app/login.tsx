@@ -160,16 +160,16 @@ const styles = StyleSheet.create({
     display: 'none',
   },
   logoText: {
-    fontSize: 36, fontWeight: '800', color: TEXT_PRIMARY, marginBottom: 6,
+    fontSize: 40, fontWeight: '800', color: '#1a2e1a', marginBottom: 6,
   },
   tagline: {
-    fontSize: 22, fontWeight: '700', color: TEXT_PRIMARY,
-    textAlign: 'center', lineHeight: 30, marginBottom: 8,
+    fontSize: 20, fontWeight: '400', color: TEXT_PRIMARY,
+    textAlign: 'center', lineHeight: 28, marginBottom: 6,
   },
-  taglineGreen: { color: GREEN },
+  taglineGreen: { color: GREEN, fontWeight: '400' },
   descripcion: {
-    fontSize: 13, color: TEXT_SECONDARY,
-    textAlign: 'center', lineHeight: 20,
+    fontSize: 13, color: TEXT_MUTED,
+    textAlign: 'center', lineHeight: 20, marginTop: 4,
   },
 
   // Features
@@ -180,10 +180,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-  featureIconEmoji: { fontSize: 16 },
+  featureIconEmoji: { fontSize: 17 },
   featureText:  { flex: 1 },
-  featureTitle: { fontSize: 14, fontWeight: '700', color: TEXT_PRIMARY },
-  featureSub:   { fontSize: 12, color: TEXT_SECONDARY, marginTop: 1 },
+  featureTitle: { fontSize: 14, fontWeight: '700', color: '#1a2e1a' },
+  featureSub:   { fontSize: 12, color: TEXT_MUTED, marginTop: 2 },
 
   // Botones
   botonesSection: { gap: 12 },
