@@ -1,4 +1,5 @@
 import prisma from "../../db.js";
+import { toIntOrNull, toFloatOrNull } from "../utils/sanitize.js";
 
 const DogsService = {};
 
@@ -7,7 +8,7 @@ DogsService.getAllDogs = async () => {
     include: {
       users: {
         include: {
-          user: true, 
+          user: true,
         },
       },
     },
@@ -24,24 +25,34 @@ DogsService.getDogsByUser = async (userId) => {
       dog: true,
     },
   });
-  
+
   const dogs = userDogs.map((ud) => ud.dog);
   return dogs;
 };
 
-DogsService.createDog = async (dogData) => {
+DogsService.userOwnsDog = async (userId, dogId) => {
+  const userDog = await prisma.userDog.findFirst({
+    where: {
+      userId: parseInt(userId),
+      dogId: parseInt(dogId),
+    },
+  });
+  return Boolean(userDog);
+};
+
+DogsService.createDog = async (dogData, ownerId) => {
   const newDog = await prisma.dog.create({
     data: {
       name: dogData.name,
       breed: dogData.breed,
-      age: parseInt(dogData.age) || null,
+      age: toIntOrNull(dogData.age),
       gender: dogData.gender,
-      weight: parseFloat(dogData.weight) || null,
+      weight: toFloatOrNull(dogData.weight),
       extraNotes: dogData.extraNotes,
       photo: dogData.photo,
       users: {
         create: {
-          userId: parseInt(dogData.ownerId),
+          userId: parseInt(ownerId),
         },
       },
     },
@@ -60,9 +71,9 @@ DogsService.updateDog = async (dogId, dogData) => {
     data: {
       name: dogData.name,
       breed: dogData.breed,
-      age: dogData.age ? parseInt(dogData.age) : undefined,
+      age: dogData.age !== undefined ? toIntOrNull(dogData.age) : undefined,
       gender: dogData.gender,
-      weight: dogData.weight ? parseFloat(dogData.weight) : undefined,
+      weight: dogData.weight !== undefined ? toFloatOrNull(dogData.weight) : undefined,
       extraNotes: dogData.extraNotes,
       photo: dogData.photo,
     },

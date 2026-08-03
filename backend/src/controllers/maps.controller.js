@@ -1,40 +1,33 @@
 import MapsService from '../services/maps.service.js'
+import asyncHandler from '../utils/async-handler.js'
+import HttpError from '../utils/http-error.js'
+
 const MapsController = {}
 
-MapsController.getRoute = async (req, res) => {
-  const { origin, destination, waypoints } = req.body
+MapsController.getRoute = asyncHandler(async (req, res) => {
+  const { origin, destination, intermediates } = req.body
 
   if (!origin || !destination) {
-    return res.status(400).json({ error: 'Origin and destination are required' })
-  }  
-
-  if (waypoints && !Array.isArray(waypoints)) {
-    return res.status(400).json({ error: 'Waypoints must be an array' })
+    throw new HttpError(400, 'Origin and destination are required')
   }
-  
-  try {
-    const route = await MapsService.getRoute({ origin, destination, waypoints })
-    res.json(route)
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: 'Error obteniendo ruta', message: error.message })
-  }
-}
 
-MapsController.getDirection = async (req, res) => {
+  if (intermediates && !Array.isArray(intermediates)) {
+    throw new HttpError(400, 'intermediates must be an array')
+  }
+
+  const route = await MapsService.getRoute({ origin, destination, intermediates })
+  res.json(route)
+})
+
+MapsController.getDirection = asyncHandler(async (req, res) => {
     const { textQuery } = req.body
 
     if (!textQuery) {
-        return res.status(400).json({ error: 'textQuery is required' })
+        throw new HttpError(400, 'textQuery is required')
     }
 
-    try {
-        const directions = await MapsService.getDirection({ textQuery })
-        res.json(directions)
-    } catch (error) {
-        console.error(error)
-        res.status(500).json({ error: 'Error obteniendo direcciones', message: error.message })
-    }
-}
+    const directions = await MapsService.getDirection({ textQuery })
+    res.json(directions)
+})
 
 export default MapsController

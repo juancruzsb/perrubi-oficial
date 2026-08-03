@@ -71,14 +71,15 @@ model Walker {
 
 model Walk {
   id        Int        @id @default(autoincrement())
-  walkerId  Int        @map("walker_id")
-  walker    Walker     @relation(fields: [walkerId], references: [id])
+  walkerId  Int?       @map("walker_id")
+  walker    Walker?    @relation(fields: [walkerId], references: [id])
   walkType  String?    @map("walk_type") // 'individual', 'group'
-  status    String?    // 'accepted', 'in_progress', 'finished', 'canceled', 'searching'
+  status    String?    // 'searching', 'accepted', 'in_progress', 'finished', 'canceled'
   price     Decimal?
   startTime DateTime?  @map("start_time")
   duration  Int?       // en minutos
   endTime   DateTime?  @map("end_time")
+  createdAt DateTime   @default(now()) @map("created_at")
   dogs      WalkDog[]
   users     WalkUser[]
 

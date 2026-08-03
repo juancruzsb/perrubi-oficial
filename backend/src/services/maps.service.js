@@ -1,4 +1,5 @@
 import axios from 'axios'
+import HttpError from '../utils/http-error.js'
 const MapsService = {}
 
 MapsService.getRoute = async ({ origin, destination, intermediates }) => {
@@ -85,7 +86,7 @@ MapsService.getDirection = async ({ textQuery }) => {
       //   "textQuery": Ubicacion a buscar, por ejemplo: "Galván 3124, CABA"
       // }
 
-    const place_info = await axios.post(
+    const placeInfo = await axios.post(
       'https://places.googleapis.com/v1/places:searchText',
       { textQuery: textQuery },
       {
@@ -97,11 +98,15 @@ MapsService.getDirection = async ({ textQuery }) => {
       }
     )
 
-    const place_id = place_info.data.places[0].id
+    if (!placeInfo.data.places || placeInfo.data.places.length === 0) {
+      throw new HttpError(404, 'Dirección no encontrada')
+    }
+
+    const placeId = placeInfo.data.places[0].id
 
     const response = await axios.get(
 
-      `https://places.googleapis.com/v1/places/${place_id}`,
+      `https://places.googleapis.com/v1/places/${placeId}`,
 
       {
         headers: {

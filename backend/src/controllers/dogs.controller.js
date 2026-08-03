@@ -1,91 +1,63 @@
 import DogsService from '../services/dogs.service.js';
+import asyncHandler from '../utils/async-handler.js';
+import HttpError from '../utils/http-error.js';
 
 const DogsController = {};
 
-DogsController.getAllDogs = async (req, res) => {
-  try {
-    const dogs = await DogsService.getAllDogs();
-    res.status(200).json(dogs);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+DogsController.getAllDogs = asyncHandler(async (req, res) => {
+  const dogs = await DogsService.getAllDogs();
+  res.status(200).json(dogs);
+});
 
-DogsController.getDogsByUser = async (req, res) => {
+DogsController.getDogsByUser = asyncHandler(async (req, res) => {
   const userId = req.params.id;
-  try {
-    const dogs = await DogsService.getDogsByUser(userId);
-    if (!dogs || dogs.length === 0) {
-      return res.status(404).json({ message: 'No dogs found for this user' });
-    }
-    res.status(200).json(dogs);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+  const dogs = await DogsService.getDogsByUser(userId);
+  res.status(200).json(dogs);
+});
 
-DogsController.getCurrentUserDogs = async (req, res) => {
-  const user = req.user;
-  
-  if (!user || !user.id) {
-     return res.status(401).json({ message: 'Unauthorized' });
-  }
+DogsController.getCurrentUserDogs = asyncHandler(async (req, res) => {
+  const dogs = await DogsService.getDogsByUser(req.user.id);
+  res.status(200).json(dogs);
+});
 
-  try {
-    const dogs = await DogsService.getDogsByUser(user.id);
-    if (!dogs || dogs.length === 0) {
-      return res.status(404).json({ message: 'No dogs found for this user' });
-    }
-    res.status(200).json(dogs);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-DogsController.createDog = async (req, res) => {
+DogsController.createDog = asyncHandler(async (req, res) => {
   const dogData = req.body;
-  const user = req.user;
-  
-  if (!user || !user.id) {
-    return res.status(401).json({ message: 'Unauthorized' });
+
+  if (!dogData.name) {
+    throw new HttpError(400, 'El nombre del perro es obligatorio');
   }
 
-  dogData.ownerId = user.id;
+  const newDog = await DogsService.createDog(dogData, req.user.id);
+  res.status(201).json(newDog);
+});
 
-  try {
-    const newDog = await DogsService.createDog(dogData);
-    res.status(201).json(newDog);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-DogsController.updateDog = async (req, res) => {
+DogsController.updateDog = asyncHandler(async (req, res) => {
   const dogId = req.params.id;
   const dogData = req.body;
-  
-  try {
-    const updatedDog = await DogsService.updateDog(dogId, dogData);
-    res.status(200).json(updatedDog);
-  } catch (error) {
-    if (error.code === 'P2025') {
-       return res.status(404).json({ message: 'Dog not found' });
-    }
-    res.status(500).json({ message: error.message });
-  }
-};
 
-DogsController.deleteDog = async (req, res) => {
-  const dogId = req.params.id;
-  try {
-    await DogsService.deleteDog(dogId);
-    res.status(200).json({ message: 'Dog deleted successfully' });
-  } catch (error) {
-     if (error.code === 'P2025') {
-       return res.status(404).json({ message: 'Dog not found' });
+  if (req.user.role !== 'admin') {
+    const owns = await DogsService.userOwnsDog(req.user.id, dogId);
+    if (!owns) {
+      throw new HttpError(403, 'No tenés permiso para modificar este perro');
     }
-    res.status(500).json({ message: error.message });
   }
-};
+
+  const updatedDog = await DogsService.updateDog(dogId, dogData);
+  res.status(200).json(updatedDog);
+});
+
+DogsController.deleteDog = asyncHandler(async (req, res) => {
+  const dogId = req.params.id;
+
+  if (req.user.role !== 'admin') {
+    const owns = await DogsService.userOwnsDog(req.user.id, dogId);
+    if (!owns) {
+      throw new HttpError(403, 'No tenés permiso para borrar este perro');
+    }
+  }
+
+  await DogsService.deleteDog(dogId);
+  res.status(200).json({ message: 'Dog deleted successfully' });
+});
 
 export default DogsController;
