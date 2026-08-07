@@ -111,8 +111,6 @@ WalksService.updateWalk = async (walkId, data) => {
 };
 
 WalksService.acceptWalk = async (walkId, walkerId) => {
-  // Update condicionado por status: si dos paseadores intentan aceptar
-  // el mismo paseo al mismo tiempo, solo uno gana la carrera (count === 0 para el otro).
   const result = await prisma.walk.updateMany({
     where: { id: parseInt(walkId), status: 'searching' },
     data: { walkerId: parseInt(walkerId), status: 'accepted' },

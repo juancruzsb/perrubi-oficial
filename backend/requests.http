@@ -1,0 +1,277 @@
+### Perrubi API - Requests de prueba
+### Requiere la extensión "REST Client" de VSCode (Huachao Mao).
+### Con el server corriendo (`node app.js` / `npm run dev`), abrí este archivo
+### y hacé click en "Send Request" arriba de cada bloque (empezando por los logins).
+### Las variables @userToken / @walkerToken se completan solas con la respuesta del login.
+
+@baseUrl = http://localhost:3000
+
+### =========================================================
+### AUTH
+### =========================================================
+
+### Registrar un User (dueño de perro)
+POST {{baseUrl}}/auth/userRegister
+Content-Type: application/json
+
+{
+  "firstName": "Juan",
+  "lastName": "Sabio",
+  "email": "juan.user@test.com",
+  "password": "123456"
+}
+
+### Registrar un Walker (paseador)
+POST {{baseUrl}}/auth/walkerRegister
+Content-Type: application/json
+
+{
+  "firstName": "Pedro",
+  "lastName": "Paseador",
+  "email": "pedro.walker@test.com",
+  "password": "123456"
+}
+
+### Login como User -> guarda el token en @userToken
+# @name userLogin
+POST {{baseUrl}}/auth/userLogin
+Content-Type: application/json
+
+{
+  "email": "juan.user@test.com",
+  "password": "123456"
+}
+
+@userToken = {{userLogin.response.body.token}}
+
+### Login como Walker -> guarda el token en @walkerToken
+# @name walkerLogin
+POST {{baseUrl}}/auth/walkerLogin
+Content-Type: application/json
+
+{
+  "email": "pedro.walker@test.com",
+  "password": "123456"
+}
+
+@walkerToken = {{walkerLogin.response.body.token}}
+
+### Ver mi perfil (User)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{userToken}}
+
+### Ver mi perfil (Walker)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{walkerToken}}
+
+### Actualizar mi perfil
+PUT {{baseUrl}}/auth/me
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Juan Editado"
+}
+
+### Cambiar mi contraseña
+PUT {{baseUrl}}/auth/me/password
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "123456",
+  "newPassword": "123456"
+}
+
+
+### =========================================================
+### DOGS
+### =========================================================
+
+### Crear un perro (como User) -> guarda el id en @dogId
+# @name createDog
+POST {{baseUrl}}/dogs
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "name": "Firulais",
+  "breed": "Labrador",
+  "age": 3,
+  "gender": "M",
+  "weight": 25.5,
+  "extraNotes": "Muy amigable"
+}
+
+@dogId = {{createDog.response.body.id}}
+
+### Mis perros (como User)
+GET {{baseUrl}}/dogs/user
+Authorization: Bearer {{userToken}}
+
+### Actualizar un perro
+PUT {{baseUrl}}/dogs/{{dogId}}
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "name": "Firulais Editado",
+  "weight": 26
+}
+
+### Borrar un perro
+DELETE {{baseUrl}}/dogs/{{dogId}}
+Authorization: Bearer {{userToken}}
+
+### Todos los perros (requiere admin)
+GET {{baseUrl}}/dogs
+Authorization: Bearer {{userToken}}
+
+### Perros de un usuario puntual (requiere admin)
+GET {{baseUrl}}/dogs/1
+Authorization: Bearer {{userToken}}
+
+
+### =========================================================
+### ADDRESSES
+### =========================================================
+
+### Crear dirección con calle (geocodifica con Google Maps)
+# @name createAddress
+POST {{baseUrl}}/addresses
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "label": "Casa",
+  "street": "Galván",
+  "number": "3124",
+  "city": "CABA",
+  "zipCode": "C1431"
+}
+
+@addressId = {{createAddress.response.body.id}}
+
+### Crear dirección con coordenadas directas
+POST {{baseUrl}}/addresses
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "label": "Trabajo",
+  "latitude": -34.5667227,
+  "longitude": -58.4877776
+}
+
+### Mis direcciones
+GET {{baseUrl}}/addresses
+Authorization: Bearer {{userToken}}
+
+### Actualizar dirección
+PUT {{baseUrl}}/addresses/{{addressId}}
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "label": "Casa editada"
+}
+
+### Borrar dirección
+DELETE {{baseUrl}}/addresses/{{addressId}}
+Authorization: Bearer {{userToken}}
+
+
+### =========================================================
+### WALKS
+### =========================================================
+
+### Crear un paseo (requiere tener al menos un perro creado, ver @dogId arriba)
+# @name createWalk
+POST {{baseUrl}}/walks
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "dogIds": [{{dogId}}],
+  "walkType": "individual",
+  "startTime": "2026-08-08T15:00:00.000Z",
+  "duration": 30
+}
+
+@walkId = {{createWalk.response.body.id}}
+
+### Mis paseos (User o Walker, según el token)
+GET {{baseUrl}}/walks/me
+Authorization: Bearer {{userToken}}
+
+### Paseos disponibles para tomar (Walker)
+GET {{baseUrl}}/walks/available
+Authorization: Bearer {{walkerToken}}
+
+### Ver un paseo puntual
+GET {{baseUrl}}/walks/{{walkId}}
+Authorization: Bearer {{userToken}}
+
+### Editar un paseo (solo mientras está en estado "searching")
+PUT {{baseUrl}}/walks/{{walkId}}
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "duration": 45
+}
+
+### Aceptar un paseo (Walker)
+PATCH {{baseUrl}}/walks/{{walkId}}/accept
+Authorization: Bearer {{walkerToken}}
+
+### Cambiar estado de un paseo
+PATCH {{baseUrl}}/walks/{{walkId}}/status
+Authorization: Bearer {{walkerToken}}
+Content-Type: application/json
+
+{
+  "status": "in_progress"
+}
+
+### Todos los paseos (requiere admin)
+GET {{baseUrl}}/walks
+Authorization: Bearer {{userToken}}
+
+
+### =========================================================
+### MAPS
+### =========================================================
+
+### Geocodificar una dirección de texto -> devuelve lat/long
+POST {{baseUrl}}/maps/directions
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "textQuery": "Galván 3124, CABA"
+}
+
+### Calcular ruta a pie entre dos coordenadas (obtenidas con /maps/directions)
+POST {{baseUrl}}/maps/route
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "origin": {
+    "location": {
+      "latLng": {
+        "latitude": -34.5667227,
+        "longitude": -58.4877776
+      }
+    }
+  },
+  "destination": {
+    "location": {
+      "latLng": {
+        "latitude": -34.5735,
+        "longitude": -58.4361
+      }
+    }
+  }
+}
