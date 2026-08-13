@@ -4,7 +4,7 @@
 ### y hacé click en "Send Request" arriba de cada bloque (empezando por los logins).
 ### Las variables @userToken / @walkerToken se completan solas con la respuesta del login.
 
-@baseUrl = http://localhost:3000
+@baseUrl = http://localhost:3002
 
 ### =========================================================
 ### AUTH
@@ -42,6 +42,8 @@ Content-Type: application/json
   "password": "123456"
 }
 
+###
+
 @userToken = {{userLogin.response.body.token}}
 
 ### Login como Walker -> guarda el token en @walkerToken
@@ -53,6 +55,8 @@ Content-Type: application/json
   "email": "pedro.walker@test.com",
   "password": "123456"
 }
+
+###
 
 @walkerToken = {{walkerLogin.response.body.token}}
 
@@ -103,6 +107,8 @@ Content-Type: application/json
   "extraNotes": "Muy amigable"
 }
 
+###
+
 @dogId = {{createDog.response.body.id}}
 
 ### Mis perros (como User)
@@ -149,6 +155,8 @@ Content-Type: application/json
   "city": "CABA",
   "zipCode": "C1431"
 }
+
+###
 
 @addressId = {{createAddress.response.body.id}}
 
@@ -198,6 +206,8 @@ Content-Type: application/json
   "duration": 30
 }
 
+###
+
 @walkId = {{createWalk.response.body.id}}
 
 ### Mis paseos (User o Walker, según el token)
@@ -236,6 +246,39 @@ Content-Type: application/json
 
 ### Todos los paseos (requiere admin)
 GET {{baseUrl}}/walks
+Authorization: Bearer {{userToken}}
+
+
+### =========================================================
+### CHAT (exclusivo del paseo, entre el usuario dueño y el paseador asignado)
+### Se abre al aceptar el paseo (PATCH /walks/{{walkId}}/accept) y se cierra
+### (solo lectura) cuando el paseo pasa a un estado final (finished/canceled).
+### =========================================================
+
+### Ver el chat de un paseo (requiere que ya haya paseador asignado)
+GET {{baseUrl}}/walks/{{walkId}}/chat
+Authorization: Bearer {{userToken}}
+
+### Enviar un mensaje (User)
+POST {{baseUrl}}/walks/{{walkId}}/chat/messages
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "body": "Hola! Firulais ya está en la puerta"
+}
+
+### Enviar un mensaje (Walker)
+POST {{baseUrl}}/walks/{{walkId}}/chat/messages
+Authorization: Bearer {{walkerToken}}
+Content-Type: application/json
+
+{
+  "body": "Perfecto, llego en 5 minutos"
+}
+
+### Marcar como leídos los mensajes del otro participante
+PATCH {{baseUrl}}/walks/{{walkId}}/chat/read
 Authorization: Bearer {{userToken}}
 
 

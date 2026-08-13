@@ -119,6 +119,35 @@ Se cambió a `walkerId Int?` / `walker Walker?` (migración
 `backend/prisma/migrations/20260803113643_walk_optional_walker`), y se agregó `Walk.createdAt`
 para poder ordenar el historial de paseos.
 
+### Chat (`src/routes/chat.router.js`, dominio nuevo — montado bajo `/walks`)
+
+Chat temporal, exclusivo del paseo entre el usuario dueño y el paseador asignado. Se crea (`Chat`,
+`status: 'open'`) en la misma transacción que `PATCH /walks/:id/accept`, y se cierra en modo
+lectura (`status: 'closed'`) en la misma transacción que cualquier transición a un estado final de
+`Walk` (`finished`/`canceled`, derivados de `ALLOWED_TRANSITIONS` en `walks.service.js`, no
+hardcodeados dos veces). Nunca se hace hard delete: el historial queda como respaldo ante un
+reclamo.
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| `GET` | `/walks/:id/chat` | participantes | Chat + últimos mensajes (`?before=<id>&limit=`). 404 si el paseo aún no tiene chat |
+| `POST` | `/walks/:id/chat/messages` | participantes | Enviar mensaje (`{ body }`). 409 si el chat ya está `closed` |
+| `PATCH` | `/walks/:id/chat/read` | participantes | Marca como leídos los mensajes del otro participante |
+
+Autorización centralizada en `ChatService.assertParticipant(walk, user)` — la misma función la usa
+el middleware `requireWalkParticipant` del router REST y el handler `chat:join` de los sockets, así
+que no hay dos implementaciones del mismo chequeo.
+
+**Tiempo real**: se agregó `socket.io` (`src/sockets/index.js`). El handshake se autentica con el
+mismo JWT que la API REST; los mensajes solo se persisten vía `POST .../messages` (un único camino
+de escritura) y desde ahí se emite `chat:message` al room `walk:<id>`; el cierre del chat emite
+`chat:closed`. `app.js` pasó a usar `http.createServer(app)` en vez de `app.listen` directo, para
+poder colgar el server de sockets del mismo puerto.
+
+Como `User` y `Walker` son tablas de identidad separadas con ids que se solapan (ver "Colisión de
+identidad" más arriba), `ChatMessage.senderId` no tiene FK: es un `(senderType, senderId)`
+polimórfico, igual al par `{ id, type }` que ya viaja en el JWT.
+
 ---
 
 ## 6. Marcado como innecesario o pendiente (no se tocó)

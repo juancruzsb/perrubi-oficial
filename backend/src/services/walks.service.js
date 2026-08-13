@@ -1,5 +1,6 @@
 import prisma from "../../db.js";
 import HttpError from "../utils/http-error.js";
+import ChatService from "./chat.service.js";
 
 const WalksService = {};
 
@@ -11,6 +12,11 @@ const ALLOWED_TRANSITIONS = {
   finished: [],
   canceled: [],
 };
+
+// Estados sin transiciones salientes: son los estados finales de un paseo.
+const FINAL_STATUSES = Object.keys(ALLOWED_TRANSITIONS).filter(
+  (status) => ALLOWED_TRANSITIONS[status].length === 0
+);
 
 const WALK_INCLUDE = {
   walker: {
@@ -111,16 +117,25 @@ WalksService.updateWalk = async (walkId, data) => {
 };
 
 WalksService.acceptWalk = async (walkId, walkerId) => {
-  const result = await prisma.walk.updateMany({
-    where: { id: parseInt(walkId), status: 'searching' },
-    data: { walkerId: parseInt(walkerId), status: 'accepted' },
+  const id = parseInt(walkId);
+
+  // El update queda condicionado a status: 'searching' para que, si dos
+  // paseadores aceptan a la vez, solo uno gane la carrera; el chat se abre
+  // en la misma transacción, así que nunca queda un chat sin ganador.
+  await prisma.$transaction(async (tx) => {
+    const result = await tx.walk.updateMany({
+      where: { id, status: 'searching' },
+      data: { walkerId: parseInt(walkerId), status: 'accepted' },
+    });
+
+    if (result.count === 0) {
+      throw new HttpError(409, 'El paseo ya no está disponible para aceptar');
+    }
+
+    await ChatService.openForWalk(tx, id);
   });
 
-  if (result.count === 0) {
-    throw new HttpError(409, 'El paseo ya no está disponible para aceptar');
-  }
-
-  return WalksService.getWalkById(walkId);
+  return WalksService.getWalkById(id);
 };
 
 WalksService.changeStatus = async (walk, newStatus) => {
@@ -145,10 +160,21 @@ WalksService.changeStatus = async (walk, newStatus) => {
     }
   }
 
-  return prisma.walk.update({
-    where: { id: walk.id },
-    data,
-    include: WALK_INCLUDE,
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.walk.update({
+      where: { id: walk.id },
+      data,
+      include: WALK_INCLUDE,
+    });
+
+    // Estados finales (finished/canceled): el chat del paseo se cierra en modo
+    // lectura junto con la actualización del paseo. updateMany es idempotente:
+    // no falla si el paseo nunca llegó a tener chat (ej. canceled desde searching).
+    if (FINAL_STATUSES.includes(newStatus)) {
+      await ChatService.closeForWalk(tx, walk.id);
+    }
+
+    return updated;
   });
 };
 
