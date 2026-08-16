@@ -326,13 +326,14 @@ const styles = StyleSheet.create({
  
   serviciosContainer: { backgroundColor: WHITE, borderRadius: 16, borderWidth: 0.5, borderColor: BORDER, padding: 12 },
   serviciosRow:       { flexDirection: 'row', gap: 10 },
-  servicioCard:       { width: 171, height: 122, backgroundColor: WHITE, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: BORDER },
+  servicioCard:       { flex: 1, backgroundColor: WHITE, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: BORDER, flexDirection: 'column', justifyContent: 'space-between', minHeight: 175 },
   servicioCardPurple: { backgroundColor: PURPLE_LIGHT, borderColor: '#ddd6fe' },
   servicioIconWrap:   { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   servicioIconEmoji:  { fontSize: 24 },
+  servicioTextos:     { flex: 1, marginTop: 8 },
   servicioNombre:     { fontSize: 14, fontWeight: '700', color: TEXT_PRIMARY, marginTop: 8, marginBottom: 4 },
-  servicioDesc:       { fontSize: 12, color: TEXT_SECONDARY, lineHeight: 16, flex: 1 },
-  servicioArrow:      { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' },
+  servicioDesc:       { fontSize: 12, color: TEXT_SECONDARY, lineHeight: 16 },
+  servicioArrow:      { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end', marginTop: 12 },
   servicioArrowText:  { color: WHITE, fontSize: 18, fontWeight: '700' },
  
   perroRow:            { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
