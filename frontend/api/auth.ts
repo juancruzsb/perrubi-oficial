@@ -1,10 +1,17 @@
 // api/auth.ts
 import { apiRequest } from './client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { cerrarSesion, guardarSesion } from './session';
+import type { User } from './types';
 
-// ─── TIPOS — basados en el schema de Prisma ─────────────────
+export type { User };
+// Re-exportados para no romper imports existentes de sesión que apuntaban acá.
+export { cerrarSesion, guardarSesion, obtenerToken, obtenerUsuario } from './session';
+
+// ─── TIPOS — contra el contrato real de auth.controller.js ──────
+// El back exige firstName (no "name"); lastName es opcional.
 export type RegisterPayload = {
-  name: string;
+  firstName: string;
+  lastName?: string;
   email: string;
   password: string;
 };
@@ -14,69 +21,53 @@ export type LoginPayload = {
   password: string;
 };
 
-// Coincide exactamente con el modelo User de Prisma
-export type User = {
-  id: number;        // SERIAL en postgres → número
-  email: string;
-  name: string | null; // name es opcional en el schema
-  password: string;  // el back lo devuelve, pero no lo uses en el front
-  createdAt: string;
-  review: number;    // default 0
-};
-
-export type LoginResponse = {
-  message: string;
-  token: string;
-  user: User;
-};
-
-export type RegisterResponse = {
-  message: string;
-  user: User;
-};
-
-// ─── ASYNCSTORAGE KEYS ──────────────────────────────────────
-const TOKEN_KEY = 'perrubi_token';
-const USER_KEY  = 'perrubi_user';
-
-// ─── HELPERS TOKEN ───────────────────────────────────────────
-export async function guardarSesion(token: string, user: User) {
-  await AsyncStorage.setItem(TOKEN_KEY, token);
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
-}
-
-export async function obtenerToken(): Promise<string | null> {
-  return AsyncStorage.getItem(TOKEN_KEY);
-}
-
-export async function obtenerUsuario(): Promise<User | null> {
-  const raw = await AsyncStorage.getItem(USER_KEY);
-  return raw ? JSON.parse(raw) : null;
-}
-
-export async function cerrarSesion() {
-  await AsyncStorage.removeItem(TOKEN_KEY);
-  await AsyncStorage.removeItem(USER_KEY);
-}
+export type RegisterResponse = { message: string; user: User };
+export type LoginResponse = { message: string; token: string; user: User };
+export type MeResponse = { user: User };
 
 // ─── LLAMADAS ────────────────────────────────────────────────
 
-// POST /auth/register → { name, email, password }
-// Devuelve el usuario creado (sin token — tiene que hacer login después)
-export async function register(payload: RegisterPayload): Promise<RegisterResponse> {
-  return apiRequest<RegisterResponse>('/auth/register', {
+// POST /auth/userRegister → { firstName, lastName?, email, password }
+// Devuelve el usuario creado (sin token — hay que loguear después).
+export function register(payload: RegisterPayload): Promise<RegisterResponse> {
+  return apiRequest<RegisterResponse>('/auth/userRegister', {
     method: 'POST',
     body: payload,
+    auth: false,
   });
 }
 
 // POST /auth/userLogin → { email, password }
-// Devuelve token + user, y los guarda en AsyncStorage automáticamente
+// Devuelve token + user, y los guarda en AsyncStorage automáticamente.
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const response = await apiRequest<LoginResponse>('/auth/userLogin', {
     method: 'POST',
     body: payload,
+    auth: false,
   });
   await guardarSesion(response.token, response.user);
   return response;
+}
+
+// GET /auth/me → perfil del usuario logueado.
+export function getMe(): Promise<MeResponse> {
+  return apiRequest<MeResponse>('/auth/me');
+}
+
+export function logout(): Promise<void> {
+  return cerrarSesion();
+}
+
+// La UI pide "Nombre completo" en un solo campo (registro.tsx); el backend
+// exige firstName por separado. Divide por el primer espacio.
+export function splitNombre(nombreCompleto: string): { firstName: string; lastName?: string } {
+  const partes = nombreCompleto.trim().split(/\s+/).filter(Boolean);
+  const firstName = partes.shift() ?? '';
+  const lastName = partes.join(' ');
+  return lastName ? { firstName, lastName } : { firstName };
+}
+
+export function nombreCompleto(user: User | null): string {
+  if (!user) return 'usuario';
+  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
 }

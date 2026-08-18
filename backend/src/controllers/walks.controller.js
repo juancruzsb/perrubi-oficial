@@ -5,7 +5,7 @@ import HttpError from '../utils/http-error.js';
 const WalksController = {};
 
 WalksController.createWalk = asyncHandler(async (req, res) => {
-  const { dogIds, walkType, startTime, duration } = req.body;
+  const { dogIds, walkType, startTime, duration, notes, addressId } = req.body;
 
   if (!Array.isArray(dogIds) || dogIds.length === 0) {
     throw new HttpError(400, 'dogIds es obligatorio y debe ser un array no vacío');
@@ -16,7 +16,17 @@ WalksController.createWalk = asyncHandler(async (req, res) => {
     throw new HttpError(403, 'Alguno de los perros no te pertenece');
   }
 
-  const walk = await WalksService.createWalk(req.user.id, { walkType, startTime, duration });
+  if (addressId != null) {
+    const ownsAddress = await WalksService.userOwnsAddress(req.user.id, addressId);
+    if (!ownsAddress) {
+      throw new HttpError(403, 'Esa dirección no te pertenece');
+    }
+  }
+
+  // Bug corregido: antes se validaba la propiedad de dogIds pero nunca se
+  // pasaba al service, así que todo paseo quedaba creado con dogs: [] para
+  // siempre (ver INTEGRACION-BACKEND-FRONTEND.md).
+  const walk = await WalksService.createWalk(req.user.id, { dogIds, walkType, startTime, duration, notes, addressId });
   res.status(201).json(walk);
 });
 
@@ -70,6 +80,13 @@ WalksController.updateWalk = asyncHandler(async (req, res) => {
 
   if (walk.status !== 'searching') {
     throw new HttpError(400, 'Solo se puede editar un paseo mientras está en búsqueda');
+  }
+
+  if (req.body.addressId != null) {
+    const ownsAddress = await WalksService.userOwnsAddress(req.user.id, req.body.addressId);
+    if (!ownsAddress) {
+      throw new HttpError(403, 'Esa dirección no te pertenece');
+    }
   }
 
   const updated = await WalksService.updateWalk(walk.id, req.body);

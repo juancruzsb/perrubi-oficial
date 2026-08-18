@@ -8,7 +8,7 @@ Perrubi — "Uber para perros" (dog-walking marketplace). This is the **backend*
 
 ## Commands
 
-- Run in dev (watch mode): `npm run dev` — this runs `nodemon src/server.js`, but note **`src/server.js` does not currently exist**; the real Express entry point is `app.js` at the package root. Run the app directly with `node app.js` until the `dev` script is fixed, or fix the script to point at `app.js`.
+- Run in dev (watch mode): `npm run dev` — runs `nodemon app.js`, the real Express entry point. (Corrected: an earlier version of this doc claimed this pointed at a nonexistent `src/server.js` — that was never accurate; `package.json` has always pointed at `app.js` and it works.)
 - No test suite exists yet (`npm test` is a stub that exits with an error).
 - No lint config exists.
 - Prisma:
@@ -42,6 +42,14 @@ Domains currently implemented: `auth`, `dogs`, `maps`. Follow this same three-fi
 
 **Auth**: `src/middlewares/auth.middlewares.js` exports `verifyToken` (validates the `Authorization: Bearer <jwt>` header, decodes with `JWT_SECRET`, sets `req.user`) and `verifyAdmin` (requires `req.user.role === 'admin'`, so it must run after `verifyToken`). There are two separate identity types with separate Prisma models and separate login/register flows: `User` (dog owners) and `Walker` (dog walkers) — see `auth.service.js` / `auth.controller.js`, which keep `userRegister`/`userLogin` and `walkerRegister`/`walkerLogin` as distinct pairs rather than a unified account model.
 
-**Schema relationships** (`prisma/schema.prisma`): `User` and `Dog` are many-to-many via `UserDog`; a `Walk` belongs to one `Walker` and has many-to-many `Dog`s (via `WalkDog`) and `User`s (via `WalkUser`). Prisma fields are camelCase and mapped to snake_case DB columns (`@map(...)` / `@@map(...)`).
+**Schema relationships** (`prisma/schema.prisma`): `User` and `Dog` are many-to-many via `UserDog`; a `Walk` belongs to one `Walker` and has many-to-many `Dog`s (via `WalkDog`) and `User`s (via `WalkUser`), and optionally one `Address` (`Walk.addressId`, added for the free-text location field on the frontend's create-walk screen). Prisma fields are camelCase and mapped to snake_case DB columns (`@map(...)` / `@@map(...)`).
 
 **Maps integration**: `src/services/maps.service.js` calls Google's Routes API (`computeRoutes`) and Places API (`searchText`, place details) directly via `axios`, authenticated with `API_KEY_MAPS`. Read the inline comments in that file for the expected request/response shapes — the frontend does not need to send `travelMode`/`routeModifiers`/etc., those are filled in server-side.
+
+## Frontend integration
+
+See `CAMBIOS-BACKEND.md` for the structural backend changes made to connect this API to the
+frontend (the `dogIds`-not-linked bug fix in `walks.controller.js`, the `Walk.notes`/`Walk.addressId`
+migration and why it was hand-authored, the `userOwnsAddress` ownership check, and two unrelated
+one-line hardenings found along the way) — and `../INTEGRACION-BACKEND-FRONTEND.md` at the repo root
+for the full picture of what got wired up on the frontend side.

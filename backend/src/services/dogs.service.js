@@ -4,11 +4,13 @@ import { toIntOrNull, toFloatOrNull } from "../utils/sanitize.js";
 const DogsService = {};
 
 DogsService.getAllDogs = async () => {
+  // select explícito (en vez de user: true) para no filtrar passwordHash —
+  // include:{user:true} devolvía el User completo, hash incluido.
   const dogs = await prisma.dog.findMany({
     include: {
       users: {
         include: {
-          user: true,
+          user: { select: { id: true, firstName: true, lastName: true, email: true } },
         },
       },
     },

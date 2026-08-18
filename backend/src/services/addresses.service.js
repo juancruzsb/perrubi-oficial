@@ -1,4 +1,5 @@
 import prisma from "../../db.js";
+import { toFloatOrNull } from "../utils/sanitize.js";
 
 const AddressesService = {};
 
@@ -24,8 +25,8 @@ AddressesService.createAddress = async (userId, data) => {
       floorApt: data.floorApt,
       city: data.city,
       zipCode: data.zipCode,
-      latitude: data.latitude,
-      longitude: data.longitude,
+      latitude: toFloatOrNull(data.latitude),
+      longitude: toFloatOrNull(data.longitude),
     },
   });
 };
@@ -40,8 +41,8 @@ AddressesService.updateAddress = async (addressId, data) => {
       floorApt: data.floorApt,
       city: data.city,
       zipCode: data.zipCode,
-      latitude: data.latitude,
-      longitude: data.longitude,
+      latitude: data.latitude !== undefined ? toFloatOrNull(data.latitude) : undefined,
+      longitude: data.longitude !== undefined ? toFloatOrNull(data.longitude) : undefined,
     },
   });
 };

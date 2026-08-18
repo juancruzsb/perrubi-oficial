@@ -1,7 +1,8 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSession } from '../../context/session';
 
 const GREEN      = '#4caf50';
 const TEXT_MUTED = '#999999';
@@ -23,6 +24,23 @@ const TAB_PADDING_BOTTOM = Platform.select({
 });
 
 export default function TabLayout() {
+  const { token, cargando } = useSession();
+
+  // Guard de sesión: (tabs)/index es la ruta "/", así que la app arranca
+  // acá en frío y este es el primer lugar donde se puede chequear si hay
+  // token. Un <Redirect> declarativo evita el "navigate before mount" que
+  // tira un router.replace() imperativo durante el primer render.
+  if (cargando) {
+    return (
+      <View style={styles.cargando}>
+        <ActivityIndicator color={GREEN} />
+      </View>
+    );
+  }
+  if (!token) {
+    return <Redirect href="/login" />;
+  }
+
   return (
     <Tabs
       screenOptions={{
@@ -89,12 +107,21 @@ export default function TabLayout() {
       name="agregar-perro"
       options={{ href: null }}
       />
-  
+
+      <Tabs.Screen name="buscando_paseador" options={{ href: null }} />
+      <Tabs.Screen name="paseo_en_curso" options={{ href: null }} />
+
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
+  cargando: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: WHITE,
+  },
   tabItem: {
     paddingTop: 2,
   },

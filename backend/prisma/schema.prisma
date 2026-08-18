@@ -80,6 +80,9 @@ model Walk {
   duration  Int?       // en minutos
   endTime   DateTime?  @map("end_time")
   createdAt DateTime   @default(now()) @map("created_at")
+  notes     String?
+  addressId Int?       @map("address_id")
+  address   Address?   @relation(fields: [addressId], references: [id], onDelete: SetNull)
   dogs      WalkDog[]
   users     WalkUser[]
   chat      Chat?
@@ -145,6 +148,7 @@ model Address {
   zipCode   String? @map("zip_code")
   latitude  Float?
   longitude Float?
+  walks     Walk[]
 
   @@map("address")
 }

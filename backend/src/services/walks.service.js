@@ -1,6 +1,7 @@
 import prisma from "../../db.js";
 import HttpError from "../utils/http-error.js";
 import ChatService from "./chat.service.js";
+import { toIntOrNull } from "../utils/sanitize.js";
 
 const WalksService = {};
 
@@ -22,6 +23,7 @@ const WALK_INCLUDE = {
   walker: {
     select: { id: true, firstName: true, lastName: true, averageRating: true, profilePicture: true },
   },
+  address: true,
   dogs: { include: { dog: true } },
   users: { include: { user: { select: { id: true, firstName: true, lastName: true } } } },
 };
@@ -36,6 +38,16 @@ WalksService.userOwnsAllDogs = async (userId, dogIds) => {
   return count === dogIds.length;
 };
 
+// Mismo patrón que userOwnsAllDogs: evita que un usuario adjunte a su paseo
+// el addressId de otro usuario (y se filtre esa dirección vía GET /walks/:id).
+WalksService.userOwnsAddress = async (userId, addressId) => {
+  const address = await prisma.address.findFirst({
+    where: { id: parseInt(addressId), userId: parseInt(userId) },
+    select: { id: true },
+  });
+  return Boolean(address);
+};
+
 WalksService.createWalk = async (userId, data) => {
   const dogIds = (data.dogIds || []).map((id) => parseInt(id));
 
@@ -45,6 +57,8 @@ WalksService.createWalk = async (userId, data) => {
       status: 'searching',
       startTime: data.startTime ? new Date(data.startTime) : null,
       duration: data.duration ? parseInt(data.duration) : null,
+      notes: data.notes ?? null,
+      addressId: data.addressId != null ? parseInt(data.addressId) : null,
       dogs: {
         create: dogIds.map((dogId) => ({ dog: { connect: { id: dogId } } })),
       },
@@ -111,6 +125,8 @@ WalksService.updateWalk = async (walkId, data) => {
       walkType: data.walkType,
       startTime: data.startTime ? new Date(data.startTime) : undefined,
       duration: data.duration ? parseInt(data.duration) : undefined,
+      notes: data.notes !== undefined ? data.notes : undefined,
+      addressId: data.addressId !== undefined ? toIntOrNull(data.addressId) : undefined,
     },
     include: WALK_INCLUDE,
   });

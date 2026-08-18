@@ -4,7 +4,7 @@
 ### y hacé click en "Send Request" arriba de cada bloque (empezando por los logins).
 ### Las variables @userToken / @walkerToken se completan solas con la respuesta del login.
 
-@baseUrl = http://localhost:3002
+@baseUrl = http://localhost:3000
 
 ### =========================================================
 ### AUTH
@@ -208,7 +208,7 @@ Content-Type: application/json
 
 ###
 
-@walkId = {{createWalk.response.body.id}}
+@walkId = 4
 
 ### Mis paseos (User o Walker, según el token)
 GET {{baseUrl}}/walks/me

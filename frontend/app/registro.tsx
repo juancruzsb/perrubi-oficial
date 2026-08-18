@@ -5,7 +5,8 @@ import {
   ScrollView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { register, login } from '../api/auth';
+import { register, login, splitNombre } from '../api/auth';
+import { useSession } from '../context/session';
 
 const GREEN        = '#4caf50';
 const WHITE        = '#ffffff';
@@ -19,6 +20,7 @@ const RED          = '#ef4444';
 
 export default function RegistroScreen() {
   const router = useRouter();
+  const { entrar } = useSession();
 
   const [nombre,   setNombre]   = useState('');
   const [email,    setEmail]    = useState('');
@@ -52,10 +54,12 @@ export default function RegistroScreen() {
 
     try {
       setLoading(true);
-      // 1. Registra el usuario
-      await register({ name: nombre, email, password });
+      const emailNormalizado = email.trim().toLowerCase();
+      // 1. Registra el usuario (el back exige firstName, no "name")
+      await register({ ...splitNombre(nombre), email: emailNormalizado, password });
       // 2. Hace login automático (el register no devuelve token)
-      await login({ email, password });
+      const res = await login({ email: emailNormalizado, password });
+      await entrar(res.token, res.user);
       // 3. Va directo al home
       router.replace('/(tabs)');
     } catch (err: any) {
@@ -187,7 +191,7 @@ export default function RegistroScreen() {
 
           <TouchableOpacity
             style={styles.btnIniciar}
-            onPress={() => router.back()}
+            onPress={() => router.replace('/login-form')}
           >
             <Text style={styles.btnIniciarText}>Iniciar sesión</Text>
             <Text style={styles.btnIniciarIcon}>→|</Text>
