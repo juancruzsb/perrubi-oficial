@@ -102,14 +102,61 @@ export default function TabLayout() {
         name="crear-paseo"
         options={{ href: null }}
       />
-      
+
       <Tabs.Screen
-      name="agregar-perro"
-      options={{ href: null }}
+        name="agregar-perro"
+        options={{ href: null }}
       />
 
-      <Tabs.Screen name="buscando_paseador" options={{ href: null }} />
-      <Tabs.Screen name="paseo_en_curso" options={{ href: null }} />
+      <Tabs.Screen
+        name="estado_paseador"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="buscando_paseador"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="calificacion"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="detalles_del_paseo"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="metodos_de_pago"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="mis_perros"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="mis_reseñas"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="notificaciones"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="paseo_en_curso"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="paseo_finalizado"
+        options={{ href: null }}
+      />
 
     </Tabs>
   );
