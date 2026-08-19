@@ -15,6 +15,7 @@ import { useFocusEffect } from "expo-router/react-navigation";
 import { getMyDogs } from '../../api/dogs';
 import { getMyWalks } from '../../api/walks';
 import { useSession } from '../../context/session';
+import { rutaDeWalk } from '../../lib/paseos';
 import type { Dog, Walk } from '../../api/types';
 
 // ─── COLORES ────────────────────────────────────────────────
@@ -35,7 +36,7 @@ type Perro = {
   id: string; nombre: string; tipo: string; edad: string; activo: boolean;
 };
 type PaseoReciente = {
-  id: string; dia: string; tiempo: string; ubicacion: string; completado: boolean;
+  id: string; dia: string; tiempo: string; ubicacion: string; completado: boolean; status: Walk['status'];
 };
  
 // ─── ADAPTADORES api/ → tipos de presentación de esta pantalla ──
@@ -67,11 +68,12 @@ function walkAPaseo(w: Walk): PaseoReciente {
     tiempo: w.duration != null ? `${w.duration} min` : 'Sin duración',
     ubicacion: w.address?.street ?? w.address?.label ?? 'Sin ubicación',
     completado: w.status === 'finished',
+    status: w.status,
   };
 }
 
 // ─── HEADER ─────────────────────────────────────────────────
-function Header({ tieneNotif }: { tieneNotif: boolean }) {
+function Header({ tieneNotif, onAvatar }: { tieneNotif: boolean; onAvatar: () => void }) {
   return (
     <View style={styles.header}>
       <View style={styles.headerLogo}>
@@ -80,11 +82,14 @@ function Header({ tieneNotif }: { tieneNotif: boolean }) {
         <Text style={styles.logoText}>Perrubi</Text>
       </View>
       <View style={styles.headerIcons}>
+        {/* Sin onPress: notificaciones.tsx es un mock sin backend detrás
+            (fuera de alcance de esta integración), tieneNotif queda en
+            false porque no hay endpoint que lo llene. */}
         <TouchableOpacity style={styles.iconBtn}>
           <Text style={styles.iconEmoji}>🔔</Text>
           {tieneNotif && <View style={styles.notifDot} />}
         </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn}>
+        <TouchableOpacity style={styles.iconBtn} onPress={onAvatar}>
           {/* TODO: <Image source={{uri: avatarUrl}} style={styles.avatarPlaceholder} /> */}
           <View style={styles.avatarPlaceholder} />
         </TouchableOpacity>
@@ -154,13 +159,13 @@ function SeccionServicios({ onServicio }: { onServicio: (tipo: string) => void }
 }
  
 // ─── TU PERRO — CON DATOS ────────────────────────────────────
-function SeccionPerrosConDatos({ perros, onAgregar }: { perros: Perro[], onAgregar: () => void }) {
+function SeccionPerrosConDatos({ perros, onAgregar, onVerPerros }: { perros: Perro[], onAgregar: () => void, onVerPerros: () => void }) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Tu perro</Text>
       <View style={styles.card}>
         {perros.map((p) => (
-          <TouchableOpacity key={p.id} style={styles.perroRow}>
+          <TouchableOpacity key={p.id} style={styles.perroRow} onPress={onVerPerros}>
             <View style={styles.perroFotoPlaceholder}><Text style={{ fontSize: 20 }}>🐶</Text></View>
             <View style={styles.perroInfo}>
               <View style={styles.perroNombreRow}>
@@ -210,16 +215,24 @@ function SeccionPerrosVacia({ onAgregar }: { onAgregar: () => void }) {
 }
  
 // ─── PASEOS — CON DATOS ──────────────────────────────────────
-function SeccionPaseosConDatos({ paseos }: { paseos: PaseoReciente[] }) {
+function SeccionPaseosConDatos({
+  paseos,
+  onVerTodos,
+  onPaseo,
+}: {
+  paseos: PaseoReciente[];
+  onVerTodos: () => void;
+  onPaseo: (p: PaseoReciente) => void;
+}) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>Paseos recientes</Text>
-        <TouchableOpacity><Text style={styles.verTodos}>Ver todos</Text></TouchableOpacity>
+        <TouchableOpacity onPress={onVerTodos}><Text style={styles.verTodos}>Ver todos</Text></TouchableOpacity>
       </View>
       <View style={styles.card}>
         {paseos.map((p) => (
-          <TouchableOpacity key={p.id} style={styles.paseoRow}>
+          <TouchableOpacity key={p.id} style={styles.paseoRow} onPress={() => onPaseo(p)}>
             <View style={styles.mapaThumbnailPlaceholder}><Text style={{ fontSize: 22 }}>🗺️</Text></View>
             <View style={styles.paseoInfo}>
               <Text style={styles.paseoNombre}>{p.dia}</Text>
@@ -239,12 +252,12 @@ function SeccionPaseosConDatos({ paseos }: { paseos: PaseoReciente[] }) {
 }
  
 // ─── PASEOS — VACÍO ──────────────────────────────────────────
-function SeccionPaseosVacio() {
+function SeccionPaseosVacio({ onVerTodos }: { onVerTodos: () => void }) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>Paseos recientes</Text>
-        <TouchableOpacity><Text style={styles.verTodos}>Ver todos</Text></TouchableOpacity>
+        <TouchableOpacity onPress={onVerTodos}><Text style={styles.verTodos}>Ver todos</Text></TouchableOpacity>
       </View>
       <View style={[styles.card, styles.paseoVacioWrap]}>
         <Text style={{ fontSize: 28, marginRight: 12 }}>📅</Text>
@@ -330,10 +343,26 @@ export default function HomeScreen() {
     router.push('/agregar-perro');
   }
 
+  function handleVerPerros() {
+    router.push('/mis_perros');
+  }
+
+  function handleVerTodosPaseos() {
+    router.push('/mis-paseos');
+  }
+
+  function handlePaseo(p: PaseoReciente) {
+    router.push(rutaDeWalk({ id: Number(p.id), status: p.status }) as any);
+  }
+
+  function handleAvatar() {
+    router.push('/perfil');
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
-      <Header tieneNotif={false} />
+      <Header tieneNotif={false} onAvatar={handleAvatar} />
       {cargando ? (
         <View style={styles.cargandoWrap}>
           <ActivityIndicator color={GREEN} />
@@ -354,8 +383,8 @@ export default function HomeScreen() {
             </View>
           ) : null}
           <SeccionServicios onServicio={handleServicio} />
-          {tienePerros ? <SeccionPerrosConDatos perros={perros} onAgregar={handleAgregarPerro} /> : <SeccionPerrosVacia onAgregar={handleAgregarPerro} />}
-          {tienePaseos ? <SeccionPaseosConDatos paseos={paseos} /> : <SeccionPaseosVacio />}
+          {tienePerros ? <SeccionPerrosConDatos perros={perros} onAgregar={handleAgregarPerro} onVerPerros={handleVerPerros} /> : <SeccionPerrosVacia onAgregar={handleAgregarPerro} />}
+          {tienePaseos ? <SeccionPaseosConDatos paseos={paseos} onVerTodos={handleVerTodosPaseos} onPaseo={handlePaseo} /> : <SeccionPaseosVacio onVerTodos={handleVerTodosPaseos} />}
           <SeccionPorQueElegir />
           <View style={{ height: 24 }} />
         </ScrollView>

@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useWalkPolling } from '../../hooks/use-walk-polling';
+import { nombrePaseador, ratingNumero } from '../../lib/paseos';
 
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN          = '#4caf50';
@@ -12,6 +14,7 @@ const BG              = '#fbfdfb';
 const WHITE           = '#ffffff';
 const TEXT_DARK       = '#1c1c1c';
 const TEXT_SECONDARY  = '#6b6b6b';
+const RED             = '#ef4444';
 const AVATAR_BG       = '#1f2937';
 const MAP_BG          = '#ecebe4';
 const MAP_PARK        = '#d7e6c9';
@@ -19,7 +22,10 @@ const MAP_WATER       = '#c7dce8';
 const LEAF_COLOR      = '#cfe9cf';
 const LEAF_COLOR_DARK = '#a9d6ab';
 
-// Puntos que dibujan la línea punteada de la ruta dentro del mapa
+// Puntos que dibujan la línea punteada de la ruta dentro del mapa — el mapa
+// es una ilustración decorativa (no hay tracking GPS ni polyline guardada
+// en el schema); cablearlo de verdad requeriría react-native-maps +
+// POST /maps/route, fuera de alcance acá.
 const ROUTE_DOTS = [
   { left: 18, top: 26 },
   { left: 34, top: 20 },
@@ -38,8 +44,22 @@ const ROUTE_DOTS = [
   { left: 238, top: 116 },
 ];
 
+function fechaLarga(iso: string | null): string {
+  if (!iso) return '';
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return '';
+  const fechaTxt = fecha.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const horaTxt = `${String(fecha.getHours()).padStart(2, '0')}:${String(fecha.getMinutes()).padStart(2, '0')}`;
+  return `${fechaTxt} • ${horaTxt}`;
+}
+
 export default function DetalleDelPaseoScreen() {
   const router = useRouter();
+  const { walkId } = useLocalSearchParams<{ walkId?: string }>();
+  const { walk, error, cargando } = useWalkPolling(walkId);
+
+  const rating = walk ? ratingNumero(walk.walker?.averageRating) : null;
+  const precio = walk?.price != null ? Number(walk.price) : null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -56,86 +76,102 @@ export default function DetalleDelPaseoScreen() {
             <Text style={styles.headerTitle}>Detalle de actividad</Text>
             <View style={styles.backBtn} />
           </View>
-          <Text style={styles.headerSubtitle}>Hoy, 29/05/2024 • 15:30</Text>
 
-          {/* Paseador */}
-          <View style={styles.walkerRow}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={26} color={WHITE} />
+          {cargando ? (
+            <View style={styles.cargandoWrap}>
+              <ActivityIndicator color={GREEN} />
             </View>
-
-            <View style={styles.walkerInfo}>
-              <Text style={styles.walkerLabel}>Paseador</Text>
-              <Text style={styles.walkerName}>Juan Pérez</Text>
+          ) : error || !walk ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{error || 'No pudimos cargar este paseo.'}</Text>
             </View>
+          ) : (
+            <>
+              <Text style={styles.headerSubtitle}>{fechaLarga(walk.startTime ?? walk.createdAt)}</Text>
 
-            <View style={styles.ratingPill}>
-              <Ionicons name="star" size={13} color={GREEN_DARK} />
-              <Text style={styles.ratingText}>4.9</Text>
-            </View>
+              {/* Paseador */}
+              {walk.walker ? (
+                <View style={styles.walkerRow}>
+                  <View style={styles.avatar}>
+                    <Ionicons name="person" size={26} color={WHITE} />
+                  </View>
 
-            <TouchableOpacity style={styles.chatBtn} activeOpacity={0.85}>
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color={GREEN} />
-            </TouchableOpacity>
-          </View>
+                  <View style={styles.walkerInfo}>
+                    <Text style={styles.walkerLabel}>Paseador</Text>
+                    <Text style={styles.walkerName}>{nombrePaseador(walk)}</Text>
+                  </View>
 
-          <View style={styles.divider} />
+                  {rating != null && (
+                    <View style={styles.ratingPill}>
+                      <Ionicons name="star" size={13} color={GREEN_DARK} />
+                      <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+                    </View>
+                  )}
 
-          {/* Resumen del paseo */}
-          <Text style={styles.sectionTitle}>Resumen del paseo</Text>
+                  <TouchableOpacity
+                    style={styles.chatBtn}
+                    activeOpacity={0.85}
+                    onPress={() => router.push({ pathname: '/chat', params: { walkId: String(walk.id) } })}
+                  >
+                    <Ionicons name="chatbubble-ellipses-outline" size={18} color={GREEN} />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <Text style={styles.sinPaseador}>Sin paseador asignado</Text>
+              )}
 
-          <View style={styles.infoRow}>
-            <View style={styles.infoLeft}>
-              <Ionicons name="time-outline" size={18} color={GREEN} />
-              <Text style={styles.infoLabel}>Duración</Text>
-            </View>
-            <Text style={styles.infoValue}>30 min</Text>
-          </View>
+              <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
-            <View style={styles.infoLeft}>
-              <Ionicons name="location-outline" size={18} color={GREEN} />
-              <Text style={styles.infoLabel}>Distancia</Text>
-            </View>
-            <Text style={styles.infoValue}>2.3 km</Text>
-          </View>
+              {/* Resumen del paseo */}
+              <Text style={styles.sectionTitle}>Resumen del paseo</Text>
 
-          <View style={[styles.infoRow, { marginBottom: 12 }]}>
-            <View style={styles.infoLeft}>
-              <Ionicons name="git-network-outline" size={18} color={GREEN} />
-              <Text style={styles.infoLabel}>Ruta realizada</Text>
-            </View>
-          </View>
+              <View style={styles.infoRow}>
+                <View style={styles.infoLeft}>
+                  <Ionicons name="time-outline" size={18} color={GREEN} />
+                  <Text style={styles.infoLabel}>Duración</Text>
+                </View>
+                <Text style={styles.infoValue}>
+                  {walk.duration != null ? `${walk.duration} min` : 'Sin registrar'}
+                </Text>
+              </View>
 
-          {/* Mapa: botón que más adelante abre Google Maps */}
-          <TouchableOpacity style={styles.mapBox} activeOpacity={0.9}>
-            <View style={styles.mapPark} />
-            <View style={styles.mapWater} />
+              <View style={[styles.infoRow, { marginBottom: 12 }]}>
+                <View style={styles.infoLeft}>
+                  <Ionicons name="git-network-outline" size={18} color={GREEN} />
+                  <Text style={styles.infoLabel}>Ruta realizada</Text>
+                </View>
+              </View>
 
-            {ROUTE_DOTS.map((p, i) => (
-              <View key={i} style={[styles.routeDot, { left: p.left, top: p.top }]} />
-            ))}
+              {/* Mapa: ilustración decorativa, no hay ruta real guardada */}
+              <View style={styles.mapBox}>
+                <View style={styles.mapPark} />
+                <View style={styles.mapWater} />
 
-            <View style={[styles.mapPin, { top: 12, left: 8 }]}>
-              <Ionicons name="walk" size={12} color={WHITE} />
-            </View>
-            <View style={[styles.mapPin, styles.mapPinEnd, { top: 104, left: 230 }]}>
-              <Ionicons name="paw" size={12} color={WHITE} />
-            </View>
+                {ROUTE_DOTS.map((p, i) => (
+                  <View key={i} style={[styles.routeDot, { left: p.left, top: p.top }]} />
+                ))}
 
-            <View style={styles.verMapaBtn}>
-              <Ionicons name="map-outline" size={13} color={GREEN} />
-              <Text style={styles.verMapaText}>Ver mapa</Text>
-            </View>
-          </TouchableOpacity>
+                <View style={[styles.mapPin, { top: 12, left: 8 }]}>
+                  <Ionicons name="walk" size={12} color={WHITE} />
+                </View>
+                <View style={[styles.mapPin, styles.mapPinEnd, { top: 104, left: 230 }]}>
+                  <Ionicons name="paw" size={12} color={WHITE} />
+                </View>
+              </View>
 
-          <View style={styles.divider} />
-
-          {/* Total pagado */}
-          <View style={[styles.infoRow, { marginBottom: 0 }]}>
-            <Text style={styles.totalLabel}>Total pagado</Text>
-            <Text style={styles.totalValue}>$ 6.500</Text>
-          </View>
+              {precio != null && (
+                <>
+                  <View style={styles.divider} />
+                  <View style={[styles.infoRow, { marginBottom: 0 }]}>
+                    <Text style={styles.totalLabel}>Total pagado</Text>
+                    <Text style={styles.totalValue}>
+                      $ {precio.toLocaleString('es-AR')}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </>
+          )}
         </View>
 
         {/* ── BOTÓN VOLVER ── */}
@@ -180,6 +216,18 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
   },
+
+  cargandoWrap: { paddingVertical: 40, alignItems: 'center' },
+  errorBanner: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 10,
+  },
+  errorText: { fontSize: 13, color: RED, textAlign: 'center' },
+  sinPaseador: { fontSize: 14, color: TEXT_SECONDARY, fontStyle: 'italic' },
 
   // Header
   header: {
@@ -245,7 +293,7 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 14, color: TEXT_DARK, marginLeft: 8 },
   infoValue: { fontSize: 15, fontWeight: '700', color: TEXT_DARK },
 
-  // Mapa (botón — se conecta con Google Maps API más adelante)
+  // Mapa (ilustración decorativa)
   mapBox: {
     height: 150,
     borderRadius: 16,
@@ -294,23 +342,6 @@ const styles = StyleSheet.create({
     borderColor: WHITE,
   },
   mapPinEnd: { backgroundColor: GREEN_DARK },
-  verMapaBtn: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: WHITE,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  verMapaText: { fontSize: 12, fontWeight: '700', color: GREEN, marginLeft: 4 },
 
   // Total pagado
   totalLabel: { fontSize: 15, fontWeight: '700', color: TEXT_DARK },

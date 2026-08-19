@@ -6,6 +6,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { setUnauthorizedHandler } from '../api/client';
 import { cerrarSesion, guardarSesion, obtenerToken, obtenerUsuario } from '../api/session';
+import { disconnectSocket } from '../api/socket';
 import type { User } from '../api/types';
 
 type SessionValue = {
@@ -39,11 +40,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   // apiRequest ya llamó a cerrarSesion() antes de invocar este handler;
   // acá solo hace falta sincronizar el estado de React para que el guard
-  // de (tabs)/_layout.tsx redirija a /login.
+  // de (tabs)/_layout.tsx redirija a /login. También hay que tirar el
+  // socket: si no, queda una conexión autenticada como el usuario expulsado.
   useEffect(() => {
     setUnauthorizedHandler(() => {
       setToken(null);
       setUser(null);
+      disconnectSocket();
     });
     return () => setUnauthorizedHandler(null);
   }, []);
@@ -56,6 +59,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const salir = useCallback(async () => {
     await cerrarSesion();
+    disconnectSocket();
     setToken(null);
     setUser(null);
   }, []);

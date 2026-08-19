@@ -108,6 +108,27 @@ No estaban en el pedido original pero son fixes triviales en archivos que ya se 
   `{id, firstName, lastName, email}`. Es una ruta admin y hoy no la usa ningún frontend, pero es
   un hash de contraseña viajando por HTTP.
 
+## 4. `WALK_INCLUDE`: `description`/`reviewCount` en el `select` de `walker`
+
+**Archivo**: `src/services/walks.service.js`
+
+Parte de la segunda pasada de integración (conectar `chat.tsx`, `paseo_en_curso.tsx`,
+`estado_paseador.tsx`, etc. — ver `../INTEGRACION-BACKEND-FRONTEND.md`). `estado_paseador.tsx`
+necesitaba la bio y la cantidad de reseñas del paseador para no mostrar datos inventados; ambos
+campos ya existían en el modelo `Walker`, solo no estaban en el `select` de `WALK_INCLUDE.walker`.
+Se agregaron `description: true, reviewCount: true`. No es un cambio de schema ni requiere
+migración — son dos claves más en un objeto que ya se serializa en `GET /walks/*`. No expone nada
+sensible (no es `passwordHash` ni `email`), y esa query ya está detrás de `verifyToken` + el chequeo
+de participación en el paseo.
+
+Se evaluó también sumar `phone` (para habilitar un botón de "Llamar" en `paseo_en_curso.tsx`) y se
+decidió que no: exponer el teléfono del paseador es una decisión de privacidad de producto, no una
+que corresponda tomar en una tarea de cableado. El botón queda sin `onPress`.
+
+Verificado end-to-end contra la base real con `requests.http`: `GET /walks/:id` después de
+`PATCH /walks/:id/accept` devuelve `walker.description` y `walker.reviewCount` (`null` si el
+paseador no cargó bio/reseñas todavía, que es el caso esperado para una cuenta nueva).
+
 ## Verificación pendiente (requiere `.env` real)
 
 Una vez completado `backend/.env`, correr contra `backend/requests.http` (ya actualizado a

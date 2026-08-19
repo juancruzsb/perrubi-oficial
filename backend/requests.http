@@ -38,8 +38,8 @@ POST {{baseUrl}}/auth/userLogin
 Content-Type: application/json
 
 {
-  "email": "juan.user@test.com",
-  "password": "123456"
+  "email": "juan@mail.com",
+  "password": "12345678"
 }
 
 ###
@@ -208,7 +208,7 @@ Content-Type: application/json
 
 ###
 
-@walkId = 4
+@walkId = 9
 
 ### Mis paseos (User o Walker, según el token)
 GET {{baseUrl}}/walks/me
@@ -241,7 +241,7 @@ Authorization: Bearer {{walkerToken}}
 Content-Type: application/json
 
 {
-  "status": "in_progress"
+  "status": "finished"
 }
 
 ### Todos los paseos (requiere admin)

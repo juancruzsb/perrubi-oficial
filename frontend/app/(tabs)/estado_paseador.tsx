@@ -7,9 +7,12 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useWalkPolling } from '../../hooks/use-walk-polling';
+import { nombrePaseador, ratingNumero } from '../../lib/paseos';
 
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN         = '#4caf50';
@@ -20,6 +23,7 @@ const TEXT_PRIMARY   = '#1a1a1a';
 const TEXT_SECONDARY = '#666666';
 const TEXT_MUTED     = '#999999';
 const BORDER         = '#ededed';
+const RED            = '#ef4444';
 const STAT_BG        = '#f5f6f5';
 const AVATAR_BG      = '#e0e0e0';
 const LEAF_DARK       = '#a9d6ab';
@@ -27,6 +31,11 @@ const LEAF_LIGHT      = '#cfe9cf';
 
 export default function EstadoPaseadorScreen() {
   const router = useRouter();
+  const { walkId } = useLocalSearchParams<{ walkId?: string }>();
+  const { walk, error, cargando } = useWalkPolling(walkId, { poll: false });
+
+  const walker = walk?.walker ?? null;
+  const rating = ratingNumero(walker?.averageRating);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -45,72 +54,80 @@ export default function EstadoPaseadorScreen() {
         <View style={styles.backBtn} />
       </View>
 
-      {/* ── CARD PRINCIPAL ── */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitulo}>Perfil del paseador</Text>
-
-        {/* Perfil */}
-        <View style={styles.profileRow}>
-          <View style={styles.avatarWrap}>
-            <View style={styles.avatarCirculo}>
-              <Ionicons name="person" size={28} color="#9e9e9e" />
-            </View>
-            <View style={styles.onlineDot} />
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.nombre}>Juan Pérez</Text>
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={14} color={ORANGE} />
-              <Text style={styles.ratingNumero}>4.9</Text>
-              <Text style={styles.ratingCantidad}>(128)</Text>
-            </View>
-          </View>
+      {cargando ? (
+        <View style={styles.centerWrap}>
+          <ActivityIndicator color={GREEN} />
         </View>
-
-        {/* Estadísticas */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <View style={styles.statValueRow}>
-              <Ionicons name="shield-checkmark" size={14} color={GREEN} />
-              <Text style={styles.statValue}>96%</Text>
-            </View>
-            <Text style={styles.statLabel}>Aceptación</Text>
-          </View>
-
-          <View style={styles.statBox}>
-            <View style={styles.statValueRow}>
-              <Ionicons name="star" size={14} color={ORANGE} />
-              <Text style={styles.statValue}>4.9</Text>
-            </View>
-            <Text style={styles.statLabel}>Calificación</Text>
-          </View>
-
-          <View style={styles.statBox}>
-            <View style={styles.statValueRow}>
-              <Ionicons name="calendar" size={14} color={GREEN} />
-              <Text style={styles.statValue}>1 año</Text>
-            </View>
-            <Text style={styles.statLabel}>En Perrubi</Text>
-          </View>
+      ) : error || !walk ? (
+        <View style={styles.centerWrap}>
+          <Text style={styles.errorText}>{error || 'No pudimos cargar este paseo.'}</Text>
         </View>
-
-        {/* Sobre mí */}
-        <View style={styles.sobreMiHeader}>
-          <Text style={styles.sobreMiTitulo}>Sobre mí</Text>
-          <Ionicons name="paw" size={28} color={LEAF_LIGHT} style={styles.pawDecor} />
+      ) : !walker ? (
+        <View style={styles.centerWrap}>
+          <Text style={styles.errorText}>Este paseo todavía no tiene paseador asignado.</Text>
         </View>
-        <Text style={styles.sobreMiTexto}>
-          Amo los perros y disfruto de cada paseo como si fuera mío.
-        </Text>
+      ) : (
+        <>
+          {/* ── CARD PRINCIPAL ── */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitulo}>Perfil del paseador</Text>
 
-        {/* Botón */}
-        <TouchableOpacity style={styles.perfilBtn} activeOpacity={0.85}>
-          <Text style={styles.perfilBtnTexto}>Ver perfil completo</Text>
-          <Ionicons name="chevron-forward" size={16} color={WHITE} />
-        </TouchableOpacity>
-      </View>
+            {/* Perfil */}
+            <View style={styles.profileRow}>
+              <View style={styles.avatarWrap}>
+                <View style={styles.avatarCirculo}>
+                  <Ionicons name="person" size={28} color="#9e9e9e" />
+                </View>
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.nombre}>{nombrePaseador(walk)}</Text>
+                {rating != null && (
+                  <View style={styles.ratingRow}>
+                    <Ionicons name="star" size={14} color={ORANGE} />
+                    <Text style={styles.ratingNumero}>{rating.toFixed(1)}</Text>
+                    {walker.reviewCount != null && (
+                      <Text style={styles.ratingCantidad}>({walker.reviewCount})</Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            </View>
 
-      <View style={{ flex: 1 }} />
+            {/* Estadísticas — solo la calificación: "% de aceptación" y
+                "antigüedad" no existen en el schema, no se inventan. */}
+            {rating != null && (
+              <View style={styles.statsRow}>
+                <View style={styles.statBox}>
+                  <View style={styles.statValueRow}>
+                    <Ionicons name="star" size={14} color={ORANGE} />
+                    <Text style={styles.statValue}>{rating.toFixed(1)}</Text>
+                  </View>
+                  <Text style={styles.statLabel}>Calificación</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Sobre mí — solo si el paseador cargó una bio */}
+            {walker.description && (
+              <>
+                <View style={styles.sobreMiHeader}>
+                  <Text style={styles.sobreMiTitulo}>Sobre mí</Text>
+                  <Ionicons name="paw" size={28} color={LEAF_LIGHT} style={styles.pawDecor} />
+                </View>
+                <Text style={styles.sobreMiTexto}>{walker.description}</Text>
+              </>
+            )}
+
+            {/* Botón — sin pantalla de perfil completo todavía */}
+            <TouchableOpacity style={styles.perfilBtn} activeOpacity={1} disabled>
+              <Text style={styles.perfilBtnTexto}>Ver perfil completo</Text>
+              <Ionicons name="chevron-forward" size={16} color={WHITE} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ flex: 1 }} />
+        </>
+      )}
 
       {/* ── DECORACIÓN INFERIOR ── */}
       <View style={styles.decorWrap} pointerEvents="none">
@@ -137,6 +154,9 @@ export default function EstadoPaseadorScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: WHITE },
 
+  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  errorText: { fontSize: 14, color: RED, textAlign: 'center' },
+
   // Header
   header: {
     flexDirection: 'row', alignItems: 'center',
@@ -161,11 +181,6 @@ const styles = StyleSheet.create({
     width: 64, height: 64, borderRadius: 32,
     backgroundColor: AVATAR_BG,
     alignItems: 'center', justifyContent: 'center',
-  },
-  onlineDot: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 14, height: 14, borderRadius: 7,
-    backgroundColor: GREEN, borderWidth: 2, borderColor: WHITE,
   },
   profileInfo: { flex: 1, gap: 6 },
   nombre: { fontSize: 20, fontWeight: '700', color: TEXT_PRIMARY },
@@ -195,6 +210,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: GREEN, borderRadius: 30,
     paddingVertical: 16, marginTop: 24,
+    opacity: 0.6,
   },
   perfilBtnTexto: { fontSize: 15, fontWeight: '700', color: WHITE },
 

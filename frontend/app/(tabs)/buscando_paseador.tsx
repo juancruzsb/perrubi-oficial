@@ -64,8 +64,9 @@ export default function BuscandoPaseadorScreen() {
           return;
         }
         if (w.status === 'accepted' || w.status === 'in_progress') {
-          // Ya hay paseador: dejamos de pollear y nos quedamos en esta
-          // pantalla mostrando el resultado (paseo_en_curso.tsx no existe).
+          // Ya hay paseador: dejamos de pollear y pasamos a la pantalla del
+          // paseo en curso, que hace su propio polling desde acá en adelante.
+          router.replace({ pathname: '/paseo_en_curso', params: { walkId } });
           return;
         }
       } catch (err: any) {

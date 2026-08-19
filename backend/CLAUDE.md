@@ -36,7 +36,7 @@ src/controllers/<domain>.controller.js -> req/res handling, status codes, input 
 src/services/<domain>.service.js    -> business logic + Prisma queries (no req/res)
 ```
 
-Domains currently implemented: `auth`, `dogs`, `maps`. Follow this same three-file pattern (router → controller → service) when adding a new domain; each layer exports a plain object of named functions (e.g. `const DogsController = {}; DogsController.getAllDogs = ...; export default DogsController`), not a class.
+Domains currently implemented: `auth`, `dogs`, `maps`, `walks`, `addresses`, `chat`. Follow this same three-file pattern (router → controller → service) when adding a new domain; each layer exports a plain object of named functions (e.g. `const DogsController = {}; DogsController.getAllDogs = ...; export default DogsController`), not a class.
 
 **Database access**: a single shared Prisma client instance lives in `db.js` at the package root (built with the `@prisma/adapter-pg` driver adapter over a `pg.Pool`). Services import it as `import prisma from '../../db.js'` — always reuse this shared instance rather than instantiating a new `PrismaClient`.
 

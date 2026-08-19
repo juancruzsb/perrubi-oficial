@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,13 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { dogsOf } from '../../api/walks';
+import { useWalkPolling } from '../../hooks/use-walk-polling';
+import { horaCorta, minutosTranscurridos, nombrePaseador, ratingNumero } from '../../lib/paseos';
 
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN         = '#4eb82f';
@@ -25,6 +29,7 @@ const WHITE          = '#ffffff';
 const TEXT_DARK       = '#1f2937';
 const TEXT_SECONDARY  = '#8a8a8a';
 const TEXT_MUTED      = '#9aa39a';
+const RED             = '#ef4444';
 const DRAG_HANDLE     = '#e5e7eb';
 const STEP_PENDING_BG = '#f3f4f6';
 const STEP_PENDING_DOT = '#c3c9c3';
@@ -34,6 +39,42 @@ const BOX_BORDER      = '#eef0ee';
 
 export default function PaseoEnCursoScreen() {
   const router = useRouter();
+  const { walkId } = useLocalSearchParams<{ walkId?: string }>();
+  const { walk, error, cargando } = useWalkPolling(walkId, { poll: true });
+
+  // Guard de estado: esta pantalla solo sabe mostrar accepted/in_progress.
+  // Si el paseo avanza (finished) o entran acá directo con un walkId de
+  // otro estado, redirige a la pantalla que corresponde en vez de mostrar
+  // datos que no tienen sentido.
+  useEffect(() => {
+    if (!walk) return;
+    if (walk.status === 'finished') {
+      router.replace({ pathname: '/paseo_finalizado', params: { walkId } });
+    } else if (walk.status === 'canceled') {
+      router.replace('/(tabs)');
+    } else if (walk.status === 'searching') {
+      router.replace({ pathname: '/buscando_paseador', params: { walkId } });
+    }
+  }, [walk, router, walkId]);
+
+  if (cargando || !walk || walk.status === 'finished' || walk.status === 'canceled' || walk.status === 'searching') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
+        <View style={styles.centerWrap}>
+          {error ? <Text style={styles.errorText}>{error}</Text> : <ActivityIndicator color={GREEN} />}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const perros = dogsOf(walk).map((d) => d.name).join(', ') || 'Tu mascota';
+  const rating = ratingNumero(walk.walker?.averageRating);
+  const enCurso = walk.status === 'in_progress';
+  const minutos = enCurso ? minutosTranscurridos(walk.startTime) : walk.duration;
+  const mensajeEstado = enCurso
+    ? `${perros} está disfrutando su paseo 🐕`
+    : `Tu paseador está en camino a buscar a ${perros}`;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -53,24 +94,22 @@ export default function PaseoEnCursoScreen() {
         contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── TOBY LLEVA CARD ── */}
+        {/* ── TARJETA DEL PERRO ── */}
         <View style={styles.tobyCard}>
           <View style={styles.tobyAvatar}>
             <Text style={styles.tobyAvatarEmoji}>🐶</Text>
           </View>
-          <Text style={styles.tobyLabel}>Toby lleva:</Text>
+          <Text style={styles.tobyLabel}>{perros}</Text>
           <View style={{ flex: 1 }} />
-          <View style={styles.tobyStat}>
-            <Ionicons name="time-outline" size={15} color={GREEN} />
-            <Text style={styles.tobyStatText}>15 min</Text>
-          </View>
-          <View style={styles.tobyStat}>
-            <Ionicons name="location-outline" size={15} color={GREEN} />
-            <Text style={styles.tobyStatText}>1.3 km</Text>
-          </View>
+          {minutos != null && (
+            <View style={styles.tobyStat}>
+              <Ionicons name="time-outline" size={15} color={GREEN} />
+              <Text style={styles.tobyStatText}>{minutos} min</Text>
+            </View>
+          )}
         </View>
 
-        {/* ── MAPA ── */}
+        {/* ── MAPA (ilustración decorativa) ── */}
         <View style={styles.mapWrapper}>
           <View style={styles.map}>
             {/* bloques de manzanas */}
@@ -117,27 +156,38 @@ export default function PaseoEnCursoScreen() {
 
             {/* paseador */}
             <View style={styles.walkerRow}>
-              <View style={styles.walkerAvatar}>
-                <Ionicons name="person" size={26} color={WHITE} />
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <View style={styles.walkerNameRow}>
-                  <Text style={styles.walkerName}>Juan Pérez</Text>
-                  <Ionicons name="star" size={14} color={GREEN_MEDIUM} style={{ marginLeft: 6 }} />
-                  <Text style={styles.walkerRating}>4.9</Text>
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+                activeOpacity={0.7}
+                onPress={() => router.push({ pathname: '/estado_paseador', params: { walkId } })}
+              >
+                <View style={styles.walkerAvatar}>
+                  <Ionicons name="person" size={26} color={WHITE} />
                 </View>
-              </View>
-              <TouchableOpacity style={styles.chatBtn} activeOpacity={0.85}>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <View style={styles.walkerNameRow}>
+                    <Text style={styles.walkerName}>{nombrePaseador(walk) ?? 'Paseador'}</Text>
+                    {rating != null && (
+                      <>
+                        <Ionicons name="star" size={14} color={GREEN_MEDIUM} style={{ marginLeft: 6 }} />
+                        <Text style={styles.walkerRating}>{rating.toFixed(1)}</Text>
+                      </>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.chatBtn}
+                activeOpacity={0.85}
+                onPress={() => router.push({ pathname: '/chat', params: { walkId } })}
+              >
                 <Ionicons name="chatbubble-ellipses" size={18} color={WHITE} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.callBtn} activeOpacity={0.85}>
+              {/* Sin onPress: el backend no expone el teléfono del paseador
+                  (decisión de privacidad, no de cableado — ver plan). */}
+              <TouchableOpacity style={styles.callBtn} activeOpacity={0.85} disabled>
                 <Ionicons name="call" size={18} color={GREEN_MEDIUM} />
               </TouchableOpacity>
-            </View>
-
-            <View style={styles.verifiedRow}>
-              <Text style={styles.verifiedText}>Paseador verificado</Text>
-              <Ionicons name="checkmark-circle" size={14} color={GREEN_MEDIUM} style={{ marginLeft: 4 }} />
             </View>
 
             {/* chip de estado */}
@@ -145,34 +195,32 @@ export default function PaseoEnCursoScreen() {
               <View style={styles.statusChipIcon}>
                 <Ionicons name="paw" size={13} color={GREEN_MEDIUM} />
               </View>
-              <Text style={styles.statusChipText}>Toby está disfrutando su paseo 🐕</Text>
+              <Text style={styles.statusChipText}>{mensajeEstado}</Text>
             </View>
 
-            {/* stat boxes */}
-            <View style={styles.statsRow}>
-              <View style={styles.statBox}>
-                <View style={styles.statBoxHeader}>
-                  <Ionicons name="time-outline" size={13} color={TEXT_MUTED} />
-                  <Text style={styles.statBoxLabel}>TIEMPO</Text>
+            {/* stat box */}
+            {minutos != null && (
+              <View style={styles.statsRow}>
+                <View style={styles.statBox}>
+                  <View style={styles.statBoxHeader}>
+                    <Ionicons name="time-outline" size={13} color={TEXT_MUTED} />
+                    <Text style={styles.statBoxLabel}>{enCurso ? 'TRANSCURRIDO' : 'DURACIÓN PREVISTA'}</Text>
+                  </View>
+                  <Text style={styles.statBoxValue}>{minutos} min</Text>
                 </View>
-                <Text style={styles.statBoxValue}>12 min</Text>
               </View>
-              <View style={styles.statBox}>
-                <View style={styles.statBoxHeader}>
-                  <Ionicons name="location-outline" size={13} color={TEXT_MUTED} />
-                  <Text style={styles.statBoxLabel}>DISTANCIA</Text>
-                </View>
-                <Text style={styles.statBoxValue}>1.1 km</Text>
-              </View>
-            </View>
+            )}
 
-            {/* timeline */}
+            {/* timeline — solo los 3 pasos con timestamp real disponible */}
             <View style={styles.timeline}>
-              <TimelineStep label="Paseador asignado" time="14:30" status="done" />
-              <TimelineStep label={'En camino a buscar a\nToby'} time="14:35" status="done" />
-              <TimelineStep label="Toby fue recogido" time="14:40" status="done" />
-              <TimelineStep label="Paseando ahora" time="14:45" status="active" />
-              <TimelineStep label="Regresando a casa" time="--:--" status="pending" isLast />
+              <TimelineStep label="Paseo solicitado" time={horaCorta(walk.createdAt)} status="done" />
+              <TimelineStep label="Paseador asignado" time="--:--" status="done" />
+              <TimelineStep
+                label="Paseando ahora"
+                time={horaCorta(walk.startTime)}
+                status={enCurso ? 'active' : 'pending'}
+                isLast
+              />
             </View>
           </View>
         </View>
@@ -250,6 +298,8 @@ function TimelineStep({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: WHITE },
   container: { flex: 1, backgroundColor: WHITE },
+  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  errorText: { fontSize: 14, color: RED, textAlign: 'center' },
 
   // Header
   header: {
@@ -415,9 +465,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+    opacity: 0.4,
   },
-  verifiedRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, marginLeft: 64 },
-  verifiedText: { fontSize: 13, color: TEXT_SECONDARY },
 
   // Status chip
   statusChip: {

@@ -58,6 +58,8 @@ export type WalkWalker = {
   lastName: string | null;
   averageRating: string | null;
   profilePicture: string | null;
+  description: string | null;
+  reviewCount: number | null;
 };
 
 // walk.dogs y walk.users son FILAS DE JOIN (WalkDog/WalkUser), no arrays
@@ -86,4 +88,27 @@ export type Walk = {
   address: Address | null;
   dogs: WalkDogRow[];
   users: WalkUserRow[];
+};
+
+// ─── CHAT ─────────────────────────────────────────────────────
+// Calcados de chat.service.js. Los sockets del backend son read-only: los
+// mensajes se mandan siempre por POST /walks/:id/chat/messages, nunca por
+// socket — ver api/chat.ts y hooks/use-chat.ts.
+export type ChatMessage = {
+  id: number;
+  chatId: number;
+  senderType: 'user' | 'walker';
+  senderId: number;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type Chat = {
+  id: number;
+  walkId: number;
+  status: 'open' | 'closed';
+  createdAt: string;
+  closedAt: string | null;
+  messages: ChatMessage[]; // orden ascendente (el back ya hace .reverse())
 };

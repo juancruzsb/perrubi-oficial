@@ -1,15 +1,20 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getMyDogs } from '../../api/dogs';
+import type { Dog } from '../../api/types';
 
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN         = '#4caf50';
@@ -20,45 +25,48 @@ const WHITE         = '#ffffff';
 const TEXT_DARK       = '#1a1a1a';
 const TEXT_SECONDARY  = '#8a8f8a';
 const BORDER          = '#e8ebe8';
-const CHEVRON_COLOR   = '#c2c7c2';
+const RED             = '#ef4444';
 const LEAF_COLOR      = '#cfe9cf';
 const LEAF_COLOR_DARK = '#a9d6ab';
 
-type Genero = 'macho' | 'hembra';
-
-type Perro = {
-  id: string;
-  nombre: string;
-  raza: string;
-  edad: number;
-  genero: Genero;
-  foto: string;
-  verificado: boolean;
-};
-
-const perros: Perro[] = [
-  {
-    id: '1',
-    nombre: 'Toby',
-    raza: 'Labrador',
-    edad: 3,
-    genero: 'macho',
-    foto: 'https://images.dog.ceo/breeds/labrador/n02099712_1234.jpg',
-    verificado: true,
-  },
-  {
-    id: '2',
-    nombre: 'Luna',
-    raza: 'Beagle',
-    edad: 2,
-    genero: 'hembra',
-    foto: 'https://images.dog.ceo/breeds/beagle/n02088364_1234.jpg',
-    verificado: true,
-  },
-];
+function metaPerro(perro: Dog): string {
+  const partes = [
+    perro.breed ?? 'Raza no especificada',
+    perro.age != null ? `${perro.age} ${perro.age === 1 ? 'año' : 'años'}` : null,
+    perro.gender ? (perro.gender === 'macho' || perro.gender === 'male' ? 'Macho' : 'Hembra') : null,
+  ].filter(Boolean);
+  return partes.join(' • ');
+}
 
 export default function MisPerrosScreen() {
   const router = useRouter();
+
+  // null = todavía no cargó (evita flashear el estado vacío antes de tiempo)
+  const [perros, setPerros] = useState<Dog[] | null>(null);
+  const [error, setError] = useState('');
+  const [refrescando, setRefrescando] = useState(false);
+
+  const cargar = useCallback(async (esRefresh = false) => {
+    try {
+      setError('');
+      if (esRefresh) setRefrescando(true);
+      const d = await getMyDogs();
+      setPerros(d);
+    } catch (err: any) {
+      setError(err.message || 'No pudimos cargar tus perros.');
+    } finally {
+      if (esRefresh) setRefrescando(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      cargar();
+    }, [cargar])
+  );
+
+  const cargando = perros === null;
+  const tienePerros = (perros?.length ?? 0) > 0;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -67,6 +75,9 @@ export default function MisPerrosScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refrescando} onRefresh={() => cargar(true)} colors={[GREEN]} />
+        }
       >
         {/* ── CARD PRINCIPAL ── */}
         <View style={styles.card}>
@@ -80,36 +91,49 @@ export default function MisPerrosScreen() {
           </TouchableOpacity>
           <Text style={styles.title}>Mis perros</Text>
 
-          {/* Lista de perros */}
-          <View style={styles.list}>
-            {perros.map((perro) => (
-              <TouchableOpacity key={perro.id} style={styles.dogCard} activeOpacity={0.7}>
-                <View style={styles.avatarWrap}>
-                  <View style={styles.avatar}>
-                    {/* TODO: <Image source={{ uri: perro.foto }} style={styles.avatarImg} /> */}
-                    <Text style={styles.avatarEmoji}>🐕</Text>
-                  </View>
-                  {perro.verificado && (
-                    <View style={styles.checkBadge}>
-                      <Ionicons name="checkmark" size={12} color={WHITE} />
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {cargando ? (
+            <View style={styles.cargandoWrap}>
+              <ActivityIndicator color={GREEN} />
+            </View>
+          ) : tienePerros ? (
+            <View style={styles.list}>
+              {perros!.map((perro) => (
+                <View key={perro.id} style={styles.dogCard}>
+                  <View style={styles.avatarWrap}>
+                    <View style={styles.avatar}>
+                      {perro.photo ? (
+                        <Image source={{ uri: perro.photo }} style={styles.avatarImg} />
+                      ) : (
+                        <Text style={styles.avatarEmoji}>🐕</Text>
+                      )}
                     </View>
-                  )}
-                </View>
-
-                <View style={styles.dogInfo}>
-                  <View style={styles.dogNameRow}>
-                    <Text style={styles.dogName}>{perro.nombre}</Text>
-                    <Text style={styles.dogPaw}>🐶</Text>
                   </View>
-                  <Text style={styles.dogMeta}>
-                    {perro.raza} • {perro.edad} años • {perro.genero === 'macho' ? 'Macho' : 'Hembra'}
-                  </Text>
-                </View>
 
-                <Ionicons name="chevron-forward" size={20} color={CHEVRON_COLOR} />
-              </TouchableOpacity>
-            ))}
-          </View>
+                  <View style={styles.dogInfo}>
+                    <View style={styles.dogNameRow}>
+                      <Text style={styles.dogName}>{perro.name}</Text>
+                      <Text style={styles.dogPaw}>🐶</Text>
+                    </View>
+                    <Text style={styles.dogMeta}>{metaPerro(perro)}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.vacioWrap}>
+              <Text style={styles.vacioEmoji}>😴🐕</Text>
+              <Text style={styles.vacioTitulo}>Aún no agregaste un perro</Text>
+              <Text style={styles.vacioSubtitulo}>
+                Agregá a tu compañero para empezar a planificar sus paseos.
+              </Text>
+            </View>
+          )}
 
           {/* Agregar perro */}
           <TouchableOpacity
@@ -146,6 +170,18 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   scrollContent: { flexGrow: 1, paddingBottom: 24 },
 
+  errorBanner: {
+    marginTop: 4,
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 10,
+  },
+  errorText: { fontSize: 13, color: RED, textAlign: 'center' },
+  cargandoWrap: { paddingVertical: 32, alignItems: 'center' },
+
   // Card principal
   card: {
     marginTop: 14,
@@ -166,6 +202,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 20,
+  },
+
+  // Vacío
+  vacioWrap: { alignItems: 'center', paddingVertical: 24 },
+  vacioEmoji: { fontSize: 36, marginBottom: 12 },
+  vacioTitulo: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, textAlign: 'center' },
+  vacioSubtitulo: {
+    fontSize: 13,
+    color: TEXT_SECONDARY,
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: 12,
   },
 
   // Lista
@@ -192,19 +240,6 @@ const styles = StyleSheet.create({
   },
   avatarImg: { width: 56, height: 56, borderRadius: 28 },
   avatarEmoji: { fontSize: 26 },
-  checkBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: GREEN,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: WHITE,
-  },
 
   dogInfo: { flex: 1 },
   dogNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

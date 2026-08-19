@@ -21,7 +21,20 @@ const FINAL_STATUSES = Object.keys(ALLOWED_TRANSITIONS).filter(
 
 const WALK_INCLUDE = {
   walker: {
-    select: { id: true, firstName: true, lastName: true, averageRating: true, profilePicture: true },
+    // description/reviewCount se suman para que estado_paseador.tsx (bio +
+    // cantidad de reseñas) tenga de dónde sacar datos reales en vez de
+    // mockeados — ambos campos ya existían en el modelo Walker, no son
+    // sensibles (no es passwordHash ni email), y esta query ya está detrás
+    // de verifyToken + el chequeo de participación en el paseo.
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      averageRating: true,
+      profilePicture: true,
+      description: true,
+      reviewCount: true,
+    },
   },
   address: true,
   dogs: { include: { dog: true } },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,15 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getMyWalks, dogsOf } from '../../api/walks';
+import { useChat } from '../../hooks/use-chat';
+import { useSession } from '../../context/session';
+import { elegirPaseoDeChat, hayPaseoBuscando, horaCorta, nombrePaseador } from '../../lib/paseos';
+import type { ChatMessage, Walk } from '../../api/types';
 
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN          = '#4caf50';
@@ -27,31 +33,125 @@ const TEXT_DARK        = '#1c1c1c';
 const TEXT_SECONDARY   = '#6b6b6b';
 const TEXT_MUTED       = '#9aa39a';
 
-type Message = {
-  id: string;
-  from: 'them' | 'me';
-  text: string;
-  time: string;
-  read?: boolean;
-};
-
-const initialMessages: Message[] = [];
+function subtituloEstado(walk: Walk, cerrado: boolean): string {
+  if (cerrado) return 'Chat cerrado';
+  switch (walk.status) {
+    case 'accepted':
+      return 'Paseador asignado';
+    case 'in_progress':
+      return 'Paseo en curso';
+    case 'finished':
+      return 'Paseo finalizado';
+    default:
+      return '';
+  }
+}
 
 export default function ChatScreen() {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [text, setText] = useState('');
+  const { user } = useSession();
+  const { walkId: walkIdParam } = useLocalSearchParams<{ walkId?: string }>();
+  const scrollRef = useRef<ScrollView>(null);
 
-  const handleSend = () => {
-    if (!text.trim()) return;
-    const now = new Date();
-    const time = `${now.getHours().toString().padStart(2, '0')}:${now
-      .getMinutes()
-      .toString()
-      .padStart(2, '0')}`;
-    setMessages((prev) => [...prev, { id: Date.now().toString(), from: 'me', text: text.trim(), time }]);
-    setText('');
+  const [walks, setWalks] = useState<Walk[] | null>(null);
+  const [errorLista, setErrorLista] = useState('');
+  const [texto, setTexto] = useState('');
+
+  // Re-resuelto en cada focus (no solo al montar): así, si el usuario llega
+  // por push con ?walkId= y después toca la tab Chat a secas, no se queda
+  // pegado al walkId viejo.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelado = false;
+      getMyWalks()
+        .then((w) => {
+          if (!cancelado) setWalks(w);
+        })
+        .catch((err: any) => {
+          if (!cancelado) setErrorLista(err.message || 'No pudimos cargar tus paseos.');
+        });
+      return () => {
+        cancelado = true;
+      };
+    }, [])
+  );
+
+  const preferidoId = walkIdParam ? Number(walkIdParam) : undefined;
+  const walkActivo = walks ? elegirPaseoDeChat(walks, preferidoId) : null;
+  const buscando = walks && !walkActivo ? hayPaseoBuscando(walks) : null;
+
+  const { mensajes, estado, cerrado, error, enviando, enviar } = useChat(walkActivo?.id ?? null);
+
+  const handleSend = async () => {
+    const cuerpo = texto.trim();
+    if (!cuerpo) return;
+    setTexto('');
+    try {
+      await enviar(cuerpo);
+    } catch {
+      // El error ya quedó en el estado del hook (banner o "chat cerrado");
+      // no hace falta romper acá.
+    }
   };
+
+  const esMio = (m: ChatMessage) => m.senderType === 'user' && m.senderId === user?.id;
+
+  // ── Sin paseos cargados todavía ──
+  if (walks === null) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
+        <View style={styles.centerWrap}>
+          {errorLista ? (
+            <Text style={styles.vacioTexto}>{errorLista}</Text>
+          ) : (
+            <ActivityIndicator color={GREEN} />
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ── Sin ningún paseo con chat disponible ──
+  if (!walkActivo) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
+        <View style={styles.centerWrap}>
+          <Ionicons name="chatbubble-outline" size={48} color={TEXT_MUTED} />
+          {buscando ? (
+            <>
+              <Text style={styles.vacioTitulo}>Todavía estamos buscando paseador</Text>
+              <Text style={styles.vacioTexto}>
+                El chat se habilita apenas alguien acepte tu paseo.
+              </Text>
+              <TouchableOpacity
+                style={styles.vacioBtn}
+                activeOpacity={0.85}
+                onPress={() =>
+                  router.push({ pathname: '/buscando_paseador', params: { walkId: String(buscando.id) } })
+                }
+              >
+                <Text style={styles.vacioBtnText}>Ver búsqueda</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.vacioTitulo}>No tenés ningún paseo activo</Text>
+              <Text style={styles.vacioTexto}>Cuando un paseador acepte tu paseo, vas a poder chatear con él.</Text>
+              <TouchableOpacity style={styles.vacioBtn} activeOpacity={0.85} onPress={() => router.push('/crear-paseo')}>
+                <Text style={styles.vacioBtnText}>Pedir un paseo</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const perros = dogsOf(walkActivo).map((d) => d.name).join(', ') || 'tu mascota';
+  const inputDeshabilitado = estado !== 'listo' || cerrado;
+  const puedeVolver = router.canGoBack();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -59,21 +159,19 @@ export default function ChatScreen() {
 
       {/* ── HEADER ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="arrow-back" size={24} color={TEXT_SECONDARY} />
+        <TouchableOpacity onPress={() => router.back()} hitSlop={12} disabled={!puedeVolver}>
+          <Ionicons name="arrow-back" size={24} color={puedeVolver ? TEXT_SECONDARY : 'transparent'} />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Juan Pérez</Text>
+          <Text style={styles.headerTitle}>{nombrePaseador(walkActivo) ?? 'Paseador'}</Text>
           <View style={styles.headerStatusRow}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.headerStatus}>En línea</Text>
+            <View style={[styles.onlineDot, cerrado && styles.onlineDotCerrado]} />
+            <Text style={styles.headerStatus}>{subtituloEstado(walkActivo, cerrado)}</Text>
           </View>
         </View>
 
-        <TouchableOpacity hitSlop={12}>
-          <Ionicons name="ellipsis-vertical" size={20} color={TEXT_SECONDARY} />
-        </TouchableOpacity>
+        <View style={{ width: 20 }} />
       </View>
 
       <KeyboardAvoidingView
@@ -82,100 +180,131 @@ export default function ChatScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <ScrollView
+          ref={scrollRef}
           style={styles.container}
           contentContainerStyle={{ paddingBottom: 16 }}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
         >
-          {/* ── TOBY CARD ── */}
+          {/* ── TARJETA DEL PERRO ── */}
           <View style={styles.tobyCard}>
             <View style={styles.tobyAvatarWrap}>
               <View style={styles.tobyAvatar}>
                 <Text style={styles.tobyAvatarEmoji}>🐶</Text>
               </View>
-              <View style={styles.onlineBadge} />
             </View>
 
             <View style={{ flex: 1, marginLeft: 10 }}>
               <View style={styles.tobyNameRow}>
-                <Text style={styles.tobyName}>Toby</Text>
+                <Text style={styles.tobyName}>{perros}</Text>
                 <Text style={styles.tobyPaw}> 🐾</Text>
               </View>
-              <Text style={styles.tobySub}>Paseo en curso</Text>
+              <Text style={styles.tobySub}>{subtituloEstado(walkActivo, cerrado)}</Text>
             </View>
 
-            <View style={styles.tobyStats}>
-              <View style={styles.tobyStat}>
-                <Ionicons name="time-outline" size={13} color={TEXT_SECONDARY} />
-                <Text style={styles.tobyStatText}>12 min</Text>
-              </View>
-              <View style={styles.tobyStat}>
-                <Ionicons name="location-outline" size={13} color={TEXT_SECONDARY} />
-                <Text style={styles.tobyStatText}>1.2 km</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* ── VER UBICACIÓN ── */}
-          <TouchableOpacity style={styles.locationBtn} activeOpacity={0.85}>
-            <Text style={styles.locationBtnText}>Ver ubicación</Text>
-          </TouchableOpacity>
-
-          {/* ── MENSAJES ── */}
-          <View style={styles.messages}>
-            {messages.map((m) =>
-              m.from === 'them' ? (
-                <View key={m.id} style={styles.messageBlockLeft}>
-                  <View style={styles.bubbleIn}>
-                    <Text style={styles.bubbleInText}>{m.text}</Text>
-                  </View>
-                  <Text style={styles.timeLeft}>{m.time}</Text>
+            {walkActivo.duration != null && (
+              <View style={styles.tobyStats}>
+                <View style={styles.tobyStat}>
+                  <Ionicons name="time-outline" size={13} color={TEXT_SECONDARY} />
+                  <Text style={styles.tobyStatText}>{walkActivo.duration} min</Text>
                 </View>
-              ) : (
-                <View key={m.id} style={styles.messageBlockRight}>
-                  <View style={styles.bubbleOut}>
-                    <Text style={styles.bubbleOutText}>{m.text}</Text>
-                  </View>
-                  <View style={styles.timeRightRow}>
-                    <Text style={styles.timeRight}>{m.time}</Text>
-                    {m.read && (
-                      <Ionicons
-                        name="checkmark-done"
-                        size={14}
-                        color={GREEN_MEDIUM}
-                        style={{ marginLeft: 4 }}
-                      />
-                    )}
-                  </View>
-                </View>
-              )
+              </View>
             )}
           </View>
+
+          {estado === 'sin-chat' ? (
+            <View style={styles.avisoBox}>
+              <Text style={styles.avisoTexto}>
+                Este paseo todavía no tiene un chat (falta que un paseador lo acepte).
+              </Text>
+            </View>
+          ) : estado === 'error' ? (
+            <View style={styles.avisoBox}>
+              <Text style={styles.avisoTexto}>{error || 'No pudimos cargar el chat.'}</Text>
+            </View>
+          ) : estado === 'cargando' ? (
+            <View style={styles.centerWrapChico}>
+              <ActivityIndicator color={GREEN} />
+            </View>
+          ) : (
+            /* ── MENSAJES ── */
+            <View style={styles.messages}>
+              {mensajes.map((m) =>
+                esMio(m) ? (
+                  <View key={m.id} style={styles.messageBlockRight}>
+                    <View style={styles.bubbleOut}>
+                      <Text style={styles.bubbleOutText}>{m.body}</Text>
+                    </View>
+                    <View style={styles.timeRightRow}>
+                      <Text style={styles.timeRight}>{horaCorta(m.createdAt)}</Text>
+                      {m.readAt && (
+                        <Ionicons
+                          name="checkmark-done"
+                          size={14}
+                          color={GREEN_MEDIUM}
+                          style={{ marginLeft: 4 }}
+                        />
+                      )}
+                    </View>
+                  </View>
+                ) : (
+                  <View key={m.id} style={styles.messageBlockLeft}>
+                    <View style={styles.bubbleIn}>
+                      <Text style={styles.bubbleInText}>{m.body}</Text>
+                    </View>
+                    <Text style={styles.timeLeft}>{horaCorta(m.createdAt)}</Text>
+                  </View>
+                )
+              )}
+              {mensajes.length === 0 && (
+                <Text style={styles.sinMensajes}>Todavía no hay mensajes. ¡Escribí el primero!</Text>
+              )}
+            </View>
+          )}
         </ScrollView>
 
         {/* ── INPUT BAR ── */}
-        <View style={styles.inputBar}>
-          <TouchableOpacity hitSlop={10}>
-            <Ionicons name="attach" size={22} color={TEXT_MUTED} />
-          </TouchableOpacity>
-
-          <View style={styles.inputPill}>
-            <TextInput
-              style={styles.input}
-              placeholder="Escribe un mensaje..."
-              placeholderTextColor={TEXT_MUTED}
-              value={text}
-              onChangeText={setText}
-              multiline
-            />
+        {inputDeshabilitado ? (
+          <View style={styles.inputBarDeshabilitada}>
+            <Text style={styles.inputDeshabilitadaTexto}>
+              {cerrado
+                ? 'Este chat está cerrado.'
+                : estado === 'sin-chat'
+                ? 'El chat se habilita cuando el paseador acepte el paseo.'
+                : 'Cargando chat...'}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.inputBar}>
             <TouchableOpacity hitSlop={10}>
-              <Ionicons name="happy-outline" size={20} color={TEXT_MUTED} />
+              <Ionicons name="attach" size={22} color={TEXT_MUTED} />
+            </TouchableOpacity>
+
+            <View style={styles.inputPill}>
+              <TextInput
+                style={styles.input}
+                placeholder="Escribe un mensaje..."
+                placeholderTextColor={TEXT_MUTED}
+                value={texto}
+                onChangeText={setTexto}
+                multiline
+                editable={!enviando}
+              />
+              <TouchableOpacity hitSlop={10}>
+                <Ionicons name="happy-outline" size={20} color={TEXT_MUTED} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.sendBtn, enviando && styles.sendBtnDisabled]}
+              activeOpacity={0.85}
+              onPress={handleSend}
+              disabled={enviando || !texto.trim()}
+            >
+              {enviando ? <ActivityIndicator color={WHITE} size="small" /> : <Ionicons name="send" size={17} color={WHITE} />}
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity style={styles.sendBtn} activeOpacity={0.85} onPress={handleSend}>
-            <Ionicons name="send" size={17} color={WHITE} />
-          </TouchableOpacity>
-        </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -185,6 +314,29 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: WHITE },
   container: { flex: 1, backgroundColor: BG },
+
+  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
+  centerWrapChico: { paddingVertical: 40, alignItems: 'center' },
+  vacioTitulo: { fontSize: 16, fontWeight: '700', color: TEXT_DARK, textAlign: 'center' },
+  vacioTexto: { fontSize: 13, color: TEXT_SECONDARY, textAlign: 'center' },
+  vacioBtn: {
+    marginTop: 8,
+    backgroundColor: GREEN,
+    borderRadius: 22,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  vacioBtnText: { fontSize: 14, fontWeight: '700', color: WHITE },
+
+  avisoBox: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 14,
+    backgroundColor: GREEN_LIGHT,
+    borderRadius: 14,
+  },
+  avisoTexto: { fontSize: 13, color: TEXT_DARK, textAlign: 'center' },
+  sinMensajes: { fontSize: 13, color: TEXT_MUTED, textAlign: 'center', marginTop: 24 },
 
   // Header
   header: {
@@ -202,9 +354,10 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '700', color: TEXT_DARK },
   headerStatusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   onlineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: GREEN, marginRight: 5 },
+  onlineDotCerrado: { backgroundColor: TEXT_MUTED },
   headerStatus: { fontSize: 12, color: TEXT_SECONDARY },
 
-  // Toby card
+  // Tarjeta del perro
   tobyCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -232,17 +385,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tobyAvatarEmoji: { fontSize: 22 },
-  onlineBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: GREEN,
-    borderWidth: 2,
-    borderColor: WHITE,
-  },
   tobyNameRow: { flexDirection: 'row', alignItems: 'center' },
   tobyName: { fontSize: 15, fontWeight: '700', color: TEXT_DARK },
   tobyPaw: { fontSize: 13 },
@@ -250,17 +392,6 @@ const styles = StyleSheet.create({
   tobyStats: { alignItems: 'flex-end' },
   tobyStat: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   tobyStatText: { fontSize: 12, color: TEXT_SECONDARY, marginLeft: 4 },
-
-  // Ver ubicación
-  locationBtn: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    backgroundColor: GREEN_LIGHT,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  locationBtnText: { fontSize: 14, fontWeight: '700', color: GREEN_MEDIUM },
 
   // Mensajes
   messages: { paddingHorizontal: 20, paddingTop: 20 },
@@ -315,4 +446,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  sendBtnDisabled: { opacity: 0.6 },
+
+  inputBarDeshabilitada: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: WHITE,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+    alignItems: 'center',
+  },
+  inputDeshabilitadaTexto: { fontSize: 13, color: TEXT_MUTED },
 });

@@ -7,31 +7,53 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { dogsOf } from '../../api/walks';
+import { useWalkPolling } from '../../hooks/use-walk-polling';
 
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN          = '#4eb82f';
 const GREEN_DARK      = '#1b5e20';
-const GREEN_LIGHT     = '#f1f9ef';
+const GREEN_LIGHT     = '#eaf7eb';
 const SCREEN_BG       = '#f5f7f6';
 const WHITE           = '#ffffff';
 const TEXT_DARK       = '#1f2937';
 const TEXT_SECONDARY  = '#8a8a8a';
 const TEXT_MUTED      = '#9aa39a';
+const RED             = '#ef4444';
 const BOX_BORDER      = '#eef0ee';
-const BLUE_BG         = '#e8f3fb';
-const BLUE_TITLE      = '#1f5c99';
-const BLUE_TEXT       = '#2f6fb0';
 const LEAF_COLOR      = '#cfe9cf';
 const LEAF_COLOR_DARK = '#a9d6ab';
 const WAVE_BACK       = '#edf6ea';
 const WAVE_FRONT      = '#e0efdd';
 const DOG_PLACEHOLDER = '#e9e4d8';
 
+function subtituloPerros(nombres: string[]): string {
+  if (nombres.length === 0) return 'Ya está en casa';
+  if (nombres.length === 1) return `${nombres[0]} ya está en casa`;
+  return `${nombres.join(', ')} ya están en casa`;
+}
+
 export default function PaseoFinalizadoScreen() {
   const router = useRouter();
+  const { walkId } = useLocalSearchParams<{ walkId?: string }>();
+  const { walk, error, cargando } = useWalkPolling(walkId, { poll: false });
+
+  if (cargando || !walk) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor={SCREEN_BG} />
+        <View style={styles.centerWrap}>
+          {error ? <Text style={styles.errorText}>{error}</Text> : <ActivityIndicator color={GREEN} />}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const nombresPerros = dogsOf(walk).map((d) => d.name);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -59,7 +81,7 @@ export default function PaseoFinalizadoScreen() {
         </View>
 
         <Text style={styles.title}>¡Paseo finalizado!</Text>
-        <Text style={styles.subtitle}>Toby ya está en casa</Text>
+        <Text style={styles.subtitle}>{subtituloPerros(nombresPerros)}</Text>
 
         {/* ── TARJETA DE ESTADÍSTICAS ── */}
         <View style={styles.statsCard}>
@@ -68,37 +90,37 @@ export default function PaseoFinalizadoScreen() {
               <Ionicons name="time-outline" size={14} color={GREEN} />
               <Text style={styles.statsColLabel}>DURACIÓN</Text>
             </View>
-            <Text style={styles.statsColValue}>30 min</Text>
+            <Text style={styles.statsColValue}>
+              {walk.duration != null ? `${walk.duration} min` : '—'}
+            </Text>
           </View>
 
           <View style={styles.statsDivider} />
 
           <View style={styles.statsCol}>
             <View style={styles.statsColHeader}>
-              <Ionicons name="footsteps-outline" size={14} color={GREEN} />
-              <Text style={styles.statsColLabel}>DISTANCIA</Text>
+              <Ionicons name="paw-outline" size={14} color={GREEN} />
+              <Text style={styles.statsColLabel}>PERRO{nombresPerros.length !== 1 ? 'S' : ''}</Text>
             </View>
-            <Text style={styles.statsColValue}>2.3 km</Text>
+            <Text style={styles.statsColValue} numberOfLines={1}>
+              {nombresPerros.join(', ') || '—'}
+            </Text>
           </View>
         </View>
 
-        {/* ── FOTO + RESEÑA ── */}
+        {/* ── FOTO ── */}
         <View style={styles.rowSection}>
           <View style={styles.dogPhoto}>
             <Ionicons name="paw" size={30} color="#c9bfa0" />
           </View>
-
-          <View style={styles.reviewCard}>
-            <View style={styles.reviewStarCircle}>
-              <Ionicons name="star" size={16} color={BLUE_TITLE} />
-            </View>
-            <Text style={styles.reviewTitle}>Excelente paseo</Text>
-            <Text style={styles.reviewText}>¡Toby se portó genial!</Text>
-          </View>
         </View>
 
         {/* ── BOTÓN ── */}
-        <TouchableOpacity style={styles.detailBtn} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.detailBtn}
+          activeOpacity={0.85}
+          onPress={() => router.replace({ pathname: '/detalles_del_paseo', params: { walkId } })}
+        >
           <Text style={styles.detailBtnText}>Ver detalle</Text>
         </TouchableOpacity>
 
@@ -155,6 +177,8 @@ function Sprout({ style, big }: { style: any; big?: boolean }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: SCREEN_BG },
   container: { flex: 1, backgroundColor: SCREEN_BG },
+  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  errorText: { fontSize: 14, color: RED, textAlign: 'center' },
 
   // Header
   header: {
@@ -200,6 +224,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BOX_BORDER,
     paddingVertical: 20,
+    paddingHorizontal: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -215,18 +240,18 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     letterSpacing: 0.3,
   },
-  statsColValue: { fontSize: 21, fontWeight: '700', color: TEXT_DARK, marginTop: 8 },
+  statsColValue: { fontSize: 18, fontWeight: '700', color: TEXT_DARK, marginTop: 8 },
   statsDivider: { width: 1, height: 46, backgroundColor: BOX_BORDER },
 
-  // Foto + reseña
+  // Foto
   rowSection: {
     flexDirection: 'row',
+    justifyContent: 'center',
     marginHorizontal: 24,
     marginTop: 20,
-    gap: 12,
   },
   dogPhoto: {
-    width: 150,
+    width: 200,
     height: 132,
     borderRadius: 18,
     backgroundColor: DOG_PLACEHOLDER,
@@ -234,25 +259,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  reviewCard: {
-    flex: 1,
-    height: 132,
-    backgroundColor: BLUE_BG,
-    borderRadius: 18,
-    padding: 14,
-    justifyContent: 'center',
-  },
-  reviewStarCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: WHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  reviewTitle: { fontSize: 14, fontWeight: '700', color: BLUE_TITLE },
-  reviewText: { fontSize: 13, color: BLUE_TEXT, marginTop: 2, lineHeight: 18 },
 
   // Botón
   detailBtn: {
