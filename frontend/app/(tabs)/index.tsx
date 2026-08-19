@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,16 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { useRouter, Redirect } from 'expo-router';
- 
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from "expo-router/react-navigation";
+import { getMyDogs } from '../../api/dogs';
+import { getMyWalks } from '../../api/walks';
+import { useSession } from '../../context/session';
+import type { Dog, Walk } from '../../api/types';
+
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN        = '#4caf50';
 const GREEN_LIGHT  = '#e8f5e9';
@@ -31,13 +38,38 @@ type PaseoReciente = {
   id: string; dia: string; tiempo: string; ubicacion: string; completado: boolean;
 };
  
-const perrosMock: Perro[] = [
-  { id: '1', nombre: 'Nombre del perro', tipo: 'Tipo de perro', edad: 'Edad del perro', activo: true },
-];
-const paseosMock: PaseoReciente[] = [
-  { id: '1', dia: 'Día, fecha', tiempo: 'Tiempo de recorrido', ubicacion: 'ubicación', completado: true },
-];
- 
+// ─── ADAPTADORES api/ → tipos de presentación de esta pantalla ──
+// Se mantienen los tipos Perro/PaseoReciente y todos los componentes de
+// presentación tal cual estaban (SeccionPerrosConDatos, etc.) — solo se
+// reemplaza de dónde sale el dato.
+function dogAPerro(d: Dog, paseos: Walk[]): Perro {
+  const enCurso = ['searching', 'accepted', 'in_progress'];
+  const activo = paseos.some(
+    (w) => w.status != null && enCurso.includes(w.status) && w.dogs.some((wd) => wd.dogId === d.id)
+  );
+  return {
+    id: String(d.id),
+    nombre: d.name,
+    tipo: d.breed ?? 'Sin raza',
+    edad: d.age != null ? `${d.age} ${d.age === 1 ? 'año' : 'años'}` : 'Edad desconocida',
+    activo,
+  };
+}
+
+function walkAPaseo(w: Walk): PaseoReciente {
+  const fecha = new Date(w.startTime ?? w.createdAt);
+  const dia = Number.isNaN(fecha.getTime())
+    ? 'Fecha desconocida'
+    : fecha.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' });
+  return {
+    id: String(w.id),
+    dia,
+    tiempo: w.duration != null ? `${w.duration} min` : 'Sin duración',
+    ubicacion: w.address?.street ?? w.address?.label ?? 'Sin ubicación',
+    completado: w.status === 'finished',
+  };
+}
+
 // ─── HEADER ─────────────────────────────────────────────────
 function Header({ tieneNotif }: { tieneNotif: boolean }) {
   return (
@@ -62,7 +94,7 @@ function Header({ tieneNotif }: { tieneNotif: boolean }) {
 }
  
 // ─── HERO BANNER ────────────────────────────────────────────
-function HeroBanner() {
+function HeroBanner({ nombre }: { nombre: string }) {
   return (
     <View style={styles.heroBanner}>
       {/*
@@ -78,7 +110,7 @@ function HeroBanner() {
         <Text style={styles.placeholderLabel}>Ilustración: sala con perro</Text>
       </View>
       <View style={styles.heroOverlay}>
-        <Text style={styles.heroTitle}>¡Hola, usuario!</Text>
+        <Text style={styles.heroTitle}>¡Hola, {nombre}!</Text>
         <Text style={styles.heroSubtitle}>¿Listo para un paseo?</Text>
       </View>
     </View>
@@ -253,38 +285,81 @@ function SeccionPorQueElegir() {
 // ─── PANTALLA PRINCIPAL ──────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
- 
-  // Cambiá a [] para ver el estado vacío
-  const [perros] = useState<Perro[]>(perrosMock);
-  const [paseos] = useState<PaseoReciente[]>(paseosMock);
- 
+  const { user } = useSession();
+
+  // null = todavía no cargó (evita flashear el estado vacío antes de tiempo)
+  const [dogs, setDogs] = useState<Dog[] | null>(null);
+  const [walks, setWalks] = useState<Walk[] | null>(null);
+  const [error, setError] = useState('');
+  const [refrescando, setRefrescando] = useState(false);
+
+  const cargar = useCallback(async (esRefresh = false) => {
+    try {
+      setError('');
+      if (esRefresh) setRefrescando(true);
+      const [d, w] = await Promise.all([getMyDogs(), getMyWalks()]);
+      setDogs(d);
+      setWalks(w);
+    } catch (err: any) {
+      setError(err.message || 'No pudimos cargar tu información.');
+    } finally {
+      if (esRefresh) setRefrescando(false);
+    }
+  }, []);
+
+  // useFocusEffect (no useEffect): así, al volver de agregar-perro o
+  // crear-paseo con router.back()/replace(), la pantalla se refresca sola.
+  useFocusEffect(
+    useCallback(() => {
+      cargar();
+    }, [cargar])
+  );
+
+  const perros = dogs?.map((d) => dogAPerro(d, walks ?? [])) ?? [];
+  const paseos = (walks ?? []).slice(0, 3).map(walkAPaseo);
+
+  const cargando = dogs === null && walks === null;
   const tienePerros = perros.length > 0;
   const tienePaseos = paseos.length > 0;
- 
+
   function handleServicio(tipo: string) {
     router.push({ pathname: '/crear-paseo', params: { tipo } });
   }
 
   function handleAgregarPerro() {
-    router.push('/agregar-perro' as any);
+    router.push('/agregar-perro');
   }
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
       <Header tieneNotif={false} />
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <HeroBanner />
-        <SeccionServicios onServicio={handleServicio} />
-        {tienePerros ? <SeccionPerrosConDatos perros={perros} onAgregar={handleAgregarPerro} /> : <SeccionPerrosVacia onAgregar={handleAgregarPerro} />}
-        {tienePaseos ? <SeccionPaseosConDatos paseos={paseos} /> : <SeccionPaseosVacio />}
-        <SeccionPorQueElegir />
-        <View style={{ height: 24 }} />
-      </ScrollView>
+      {cargando ? (
+        <View style={styles.cargandoWrap}>
+          <ActivityIndicator color={GREEN} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refrescando} onRefresh={() => cargar(true)} colors={[GREEN]} />
+          }
+        >
+          <HeroBanner nombre={user?.firstName ?? 'usuario'} />
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+          <SeccionServicios onServicio={handleServicio} />
+          {tienePerros ? <SeccionPerrosConDatos perros={perros} onAgregar={handleAgregarPerro} /> : <SeccionPerrosVacia onAgregar={handleAgregarPerro} />}
+          {tienePaseos ? <SeccionPaseosConDatos paseos={paseos} /> : <SeccionPaseosVacio />}
+          <SeccionPorQueElegir />
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      )}
       {/* ↑ Sin TabBar propio — usa la de Expo del _layout.tsx */}
     </SafeAreaView>
   );
@@ -295,7 +370,13 @@ const styles = StyleSheet.create({
   safe:          { flex: 1, backgroundColor: BG },
   scroll:        { flex: 1 },
   scrollContent: { paddingBottom: 8 },
- 
+  cargandoWrap:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  errorBanner: {
+    marginHorizontal: 16, marginTop: 12, padding: 12,
+    backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 10,
+  },
+  errorText: { fontSize: 13, color: RED, textAlign: 'center' },
+
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: WHITE, paddingHorizontal: 16, paddingVertical: 12,

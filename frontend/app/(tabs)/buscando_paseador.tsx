@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,12 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { changeWalkStatus, getWalk } from '../../api/walks';
+import type { Walk } from '../../api/types';
 
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN        = '#4caf50';
@@ -27,11 +30,75 @@ const STEP_PENDING_DOT = '#a9b0a9';
 const LEAF_COLOR     = '#cfe9cf';
 const LEAF_COLOR_DARK = '#a9d6ab';
 
+const POLL_MS = 5000;
+
 export default function BuscandoPaseadorScreen() {
   const router = useRouter();
+  const { walkId } = useLocalSearchParams<{ walkId?: string }>();
+  const id = Number(walkId);
 
-  const cancelarViaje = () => {
-    router.back();
+  const [walk, setWalk] = useState<Walk | null>(null);
+  const [error, setError] = useState('');
+  const [cancelando, setCancelando] = useState(false);
+
+  useEffect(() => {
+    if (!walkId || Number.isNaN(id)) {
+      setError('No encontramos el paseo. Volvé a intentarlo desde Inicio.');
+      return;
+    }
+
+    let cancelado = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    // setTimeout recursivo (no setInterval): así no se apilan requests si
+    // una tarda, y se puede frenar el ciclo apenas se sale de "searching".
+    const tick = async () => {
+      try {
+        const w = await getWalk(id);
+        if (cancelado) return;
+        setWalk(w);
+        setError('');
+
+        if (w.status === 'canceled' || w.status === 'finished') {
+          router.replace('/(tabs)');
+          return;
+        }
+        if (w.status === 'accepted' || w.status === 'in_progress') {
+          // Ya hay paseador: dejamos de pollear y nos quedamos en esta
+          // pantalla mostrando el resultado (paseo_en_curso.tsx no existe).
+          return;
+        }
+      } catch (err: any) {
+        if (!cancelado) setError(err.message || 'No pudimos consultar el estado del paseo.');
+      }
+      if (!cancelado) timer = setTimeout(tick, POLL_MS);
+    };
+
+    tick();
+    return () => {
+      cancelado = true;
+      clearTimeout(timer);
+    };
+  }, [walkId, id, router]);
+
+  const encontrado = walk?.status === 'accepted' || walk?.status === 'in_progress';
+
+  const cancelarViaje = async () => {
+    if (!walkId || Number.isNaN(id)) {
+      router.replace('/(tabs)');
+      return;
+    }
+    try {
+      setCancelando(true);
+      await changeWalkStatus(id, 'canceled');
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      // Ej: "No se puede pasar de 'in_progress' a 'canceled'" — mensaje del
+      // back ya listo para mostrar tal cual.
+      setError(err.message || 'No pudimos cancelar el paseo.');
+    } finally {
+      setCancelando(false);
+    }
   };
 
   return (
@@ -52,8 +119,25 @@ export default function BuscandoPaseadorScreen() {
         </View>
 
         {/* ── TÍTULO ── */}
-        <Text style={styles.title}>Estamos buscando{'\n'}al mejor paseador{'\n'}para ti</Text>
-        <Text style={styles.subtitle}>Esto puede tardar unos segundos...</Text>
+        {encontrado ? (
+          <>
+            <Text style={styles.title}>
+              ¡Encontramos a{'\n'}{walk?.walker?.firstName ?? 'tu paseador'}!
+            </Text>
+            <Text style={styles.subtitle}>Ya está en camino para el paseo.</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>Estamos buscando{'\n'}al mejor paseador{'\n'}para ti</Text>
+            <Text style={styles.subtitle}>Esto puede tardar unos segundos...</Text>
+          </>
+        )}
+
+        {error ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
         {/* ── CARD DE PROGRESO ── */}
         <View style={styles.card}>
@@ -72,23 +156,45 @@ export default function BuscandoPaseadorScreen() {
           </View>
 
           <View style={[styles.stepRow, styles.stepRowLast]}>
-            <View style={styles.stepCirclePending}>
-              <View style={styles.stepDotPending} />
-            </View>
-            <Text style={styles.stepTextPending}>Esperando respuestas</Text>
+            {encontrado ? (
+              <View style={styles.stepCircleDone}>
+                <Ionicons name="checkmark" size={14} color={WHITE} />
+              </View>
+            ) : (
+              <View style={styles.stepCirclePending}>
+                <View style={styles.stepDotPending} />
+              </View>
+            )}
+            <Text style={encontrado ? styles.stepTextDone : styles.stepTextPending}>
+              {encontrado ? 'Paseador encontrado' : 'Esperando respuestas'}
+            </Text>
           </View>
         </View>
 
         <View style={{ flex: 1 }} />
 
-        {/* ── BOTÓN CANCELAR ── */}
-        <TouchableOpacity
-          style={styles.cancelBtn}
-          onPress={cancelarViaje}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.cancelBtnText}>Cancelar viaje</Text>
-        </TouchableOpacity>
+        {/* ── BOTÓN CANCELAR / VER PASEOS ── */}
+        {encontrado ? (
+          <TouchableOpacity
+            style={styles.cancelBtn}
+            onPress={() => router.replace('/(tabs)')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.cancelBtnText}>Ver mis paseos</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.cancelBtn, cancelando && styles.cancelBtnDisabled]}
+            onPress={cancelarViaje}
+            activeOpacity={0.85}
+            disabled={cancelando}
+          >
+            {cancelando
+              ? <ActivityIndicator color={GREEN} />
+              : <Text style={styles.cancelBtnText}>Cancelar viaje</Text>
+            }
+          </TouchableOpacity>
+        )}
 
         {/* ── DECORACIÓN INFERIOR ── */}
         <View style={styles.decorRow} pointerEvents="none">
@@ -178,6 +284,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  errorBanner: {
+    width: '100%', marginTop: 16, padding: 12,
+    backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 10,
+  },
+  errorText: { fontSize: 13, color: '#ef4444', textAlign: 'center' },
+
   // Card de progreso
   card: {
     width: '100%',
@@ -237,6 +349,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+  cancelBtnDisabled: { opacity: 0.6 },
   cancelBtnText: { fontSize: 16, fontWeight: '700', color: GREEN },
 
   // Decoración inferior

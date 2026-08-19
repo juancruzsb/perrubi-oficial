@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,15 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
- 
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from "expo-router/react-navigation";
+import { getMyDogs } from '../../api/dogs';
+import { createAddress } from '../../api/addresses';
+import { createWalk } from '../../api/walks';
+import type { Dog } from '../../api/types';
+
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN       = '#4caf50';
 const GREEN_LIGHT = '#e8f5e9';
@@ -28,17 +34,80 @@ const DURACIONES = ['30 min', '45 min', '60 min', '90 min'];
  
 export default function CrearPaseoScreen() {
   const router = useRouter();
+  const { tipo } = useLocalSearchParams<{ tipo?: string }>();
+
   const [duracion, setDuracion]       = useState('');
   const [ubicacion, setUbicacion]     = useState('');
   const [socializa, setSocializa]     = useState<boolean | null>(null);
   const [notas, setNotas]             = useState('');
   const [inputFocus, setInputFocus]   = useState(false);
- 
-  const continuar = () => {
-    console.log({ duracion, ubicacion, socializa, notas });
-    // TODO: navegar a la siguiente pantalla
+
+  const [perros, setPerros]             = useState<Dog[] | null>(null);
+  const [seleccionados, setSeleccionados] = useState<number[]>([]);
+  const [enviando, setEnviando]         = useState(false);
+  const [error, setError]               = useState('');
+
+  useFocusEffect(
+    useCallback(() => {
+      getMyDogs()
+        .then((d) => {
+          setPerros(d);
+          // Con un solo perro no tiene sentido obligar a tocarlo.
+          if (d.length === 1) setSeleccionados([d[0].id]);
+        })
+        .catch((err: any) => setError(err.message || 'No pudimos cargar tus perros.'));
+    }, [])
+  );
+
+  const togglePerro = (id: number) => {
+    setSeleccionados((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
- 
+
+  const puedeContinuar =
+    !!duracion && !!ubicacion.trim() && seleccionados.length > 0 && socializa !== null && !enviando;
+
+  const continuar = async () => {
+    if (!puedeContinuar) return;
+    setError('');
+
+    const walkType = socializa === true ? 'group' : 'individual';
+    // El backend no tiene un valor de walkType para "paseo + adiestramiento"
+    // (solo 'individual' | 'group') — el tipo de servicio elegido en Inicio
+    // viaja en notes para no perderlo.
+    const notasFinales = [
+      tipo === 'adiestramiento' ? 'Servicio: paseo + adiestramiento' : null,
+      notas.trim() || null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    try {
+      setEnviando(true);
+      // El back geocodifica el texto libre solo (addresses.controller.js),
+      // así que no hace falta pasar por /maps/directions desde acá.
+      const address = await createAddress({ label: 'Zona de paseo', street: ubicacion.trim() });
+      const walk = await createWalk({
+        dogIds: seleccionados,
+        walkType,
+        startTime: new Date().toISOString(),
+        duration: parseInt(duracion, 10),
+        notes: notasFinales || undefined,
+        addressId: address.id,
+      });
+      router.replace({ pathname: '/buscando_paseador', params: { walkId: String(walk.id) } });
+    } catch (err: any) {
+      setError(
+        err.message === 'Dirección no encontrada'
+          ? 'No pudimos encontrar esa dirección. Probá agregando calle, altura y ciudad.'
+          : err.message || 'No pudimos crear el paseo. Intentá de nuevo.'
+      );
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
@@ -86,11 +155,62 @@ export default function CrearPaseoScreen() {
               <Text style={styles.heroLogoText}>Perrubi</Text>
             </View>
             <Text style={styles.heroSubtitle}>
-              Elegí cómo querés el{'\n'}paseo ideal para tu perro.
+              {tipo === 'adiestramiento'
+                ? 'Paseo + adiestramiento: ejercicio y\nentrenamiento en el mismo paseo.'
+                : 'Elegí cómo querés el\npaseo ideal para tu perro.'}
             </Text>
           </View>
         </View>
- 
+
+        {error ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
+        {/* ── QUÉ PERRO ── */}
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardIconEmoji}>🐕</Text>
+            <Text style={styles.cardTitle}>¿Qué perro va al paseo?</Text>
+          </View>
+
+          {perros === null ? (
+            <ActivityIndicator color={GREEN} />
+          ) : perros.length === 0 ? (
+            <View>
+              <Text style={styles.socialPregunta}>Todavía no agregaste ningún perro.</Text>
+              <TouchableOpacity
+                style={styles.agregarPerroLink}
+                onPress={() => router.push('/agregar-perro')}
+              >
+                <Text style={styles.agregarPerroLinkText}>Agregar un perro →</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ gap: 8 }}>
+              {perros.map((p) => {
+                const activo = seleccionados.includes(p.id);
+                return (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={styles.perroRow}
+                    onPress={() => togglePerro(p.id)}
+                  >
+                    <View style={[styles.radioCircle, activo && styles.radioCircleActive]}>
+                      {activo && <View style={styles.radioDot} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.perroNombre}>{p.name}</Text>
+                      <Text style={styles.perroDetalle}>{p.breed ?? 'Sin raza'}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
         {/* ── DURACIÓN ── */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
@@ -231,11 +351,15 @@ export default function CrearPaseoScreen() {
       {/* ── BOTÓN CONTINUAR FIJO ── */}
       <View style={styles.ctaWrap}>
         <TouchableOpacity
-          style={[styles.ctaBtn, (!duracion || !ubicacion) && styles.ctaBtnDisabled]}
+          style={[styles.ctaBtn, !puedeContinuar && styles.ctaBtnDisabled]}
           onPress={continuar}
           activeOpacity={0.85}
+          disabled={!puedeContinuar}
         >
-          <Text style={styles.ctaBtnText}>Continuar</Text>
+          {enviando
+            ? <ActivityIndicator color={WHITE} />
+            : <Text style={styles.ctaBtnText}>Continuar</Text>
+          }
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -298,7 +422,23 @@ const styles = StyleSheet.create({
   cardIconEmoji: { fontSize: 18 },
   cardTitle:     { fontSize: 15, fontWeight: '700', color: TEXT_PRIMARY },
   cardTitleOpcional: { fontSize: 13, fontWeight: '400', color: TEXT_MUTED },
- 
+
+  errorBanner: {
+    marginHorizontal: 16, marginTop: 14, padding: 12,
+    backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 10,
+  },
+  errorText: { fontSize: 13, color: '#ef4444', textAlign: 'center' },
+
+  agregarPerroLink:     { marginTop: 4 },
+  agregarPerroLinkText: { fontSize: 13, color: GREEN, fontWeight: '700' },
+  perroRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1.5, borderColor: BORDER, borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 10, backgroundColor: BG,
+  },
+  perroNombre:  { fontSize: 14, fontWeight: '700', color: TEXT_PRIMARY },
+  perroDetalle: { fontSize: 12, color: TEXT_MUTED, marginTop: 1 },
+
   // Chips duración
   chipRow:       { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip: {

@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  firstName    String?    @map("first_name")
+  lastName     String?    @map("last_name")
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  role         String?    // 'admin' o 'user'
+  phone        String?
+  addresses    Address[]
+  dogs         UserDog[]
+  walks        WalkUser[]
+
+  @@map("user")
+}
+
+model Dog {
+  id         Int       @id @default(autoincrement())
+  name       String
+  age        Int?
+  breed      String?
+  gender     String?
+  weight     Decimal?
+  extraNotes String?   @map("extra_notes")
+  photo      String?
+  review     String?
+  users      UserDog[]
+  walks      WalkDog[]
+
+  @@map("dog")
+}
+
+model UserDog {
+  id     Int  @id @default(autoincrement())
+  userId Int  @map("user_id")
+  dogId  Int  @map("dog_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dog    Dog  @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("user_dog")
+}
+
+model Walker {
+  id             Int     @id @default(autoincrement())
+  firstName      String? @map("first_name")
+  lastName       String? @map("last_name")
+  email          String  @unique
+  phone          String?
+  passwordHash   String  @map("password_hash")
+  averageRating  Decimal? @map("average_rating")
+  reviewCount    Int?    @map("review_count")
+  role           String? // 'admin' o 'user'
+  profilePicture String? @map("profile_picture")
+  description    String?
+  walks          Walk[]
+
+  @@map("walker")
+}
+
+model Walk {
+  id        Int        @id @default(autoincrement())
+  walkerId  Int?       @map("walker_id")
+  walker    Walker?    @relation(fields: [walkerId], references: [id])
+  walkType  String?    @map("walk_type") // 'individual', 'group'
+  status    String?    // 'searching', 'accepted', 'in_progress', 'finished', 'canceled'
+  price     Decimal?
+  startTime DateTime?  @map("start_time")
+  duration  Int?       // en minutos
+  endTime   DateTime?  @map("end_time")
+  createdAt DateTime   @default(now()) @map("created_at")
+  notes     String?
+  addressId Int?       @map("address_id")
+  address   Address?   @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  dogs      WalkDog[]
+  users     WalkUser[]
+  chat      Chat?
+
+  @@map("walk")
+}
+
+model WalkDog {
+  id     Int  @id @default(autoincrement())
+  walkId Int  @map("walk_id")
+  dogId  Int  @map("dog_id")
+  walk   Walk @relation(fields: [walkId], references: [id], onDelete: Cascade)
+  dog    Dog  @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@map("walk_dog")
+}
+
+model WalkUser {
+  id     Int  @id @default(autoincrement())
+  walkId Int  @map("walk_id")
+  userId Int  @map("user_id")
+  walk   Walk @relation(fields: [walkId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("walk_user")
+}
+
+model Chat {
+  id        Int           @id @default(autoincrement())
+  walkId    Int           @unique @map("walk_id")
+  walk      Walk          @relation(fields: [walkId], references: [id], onDelete: Cascade)
+  status    String        @default("open") // 'open', 'closed'
+  createdAt DateTime      @default(now()) @map("created_at")
+  closedAt  DateTime?     @map("closed_at")
+  messages  ChatMessage[]
+
+  @@map("chat")
+}
+
+model ChatMessage {
+  id         Int       @id @default(autoincrement())
+  chatId     Int       @map("chat_id")
+  chat       Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  senderType String    @map("sender_type") // 'user', 'walker'
+  senderId   Int       @map("sender_id")
+  body       String
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([chatId, createdAt])
+  @@map("chat_message")
+}
+
+model Address {
+  id        Int     @id @default(autoincrement())
+  userId    Int     @map("user_id")
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String?
+  street    String?
+  number    String?
+  floorApt  String? @map("floor_apt")
+  city      String?
+  zipCode   String? @map("zip_code")
+  latitude  Float?
+  longitude Float?
+  walks     Walk[]
+
+  @@map("address")
+}

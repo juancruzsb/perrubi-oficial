@@ -9,8 +9,10 @@ import {
   StatusBar,
   ScrollView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { createDog } from '../../api/dogs';
 
 const GREEN        = '#4caf50';
 const GREEN_LIGHT  = '#e8f5e9';
@@ -41,6 +43,51 @@ export default function AgregarPerroScreen() {
   const [edadFocus,   setEdadFocus]   = useState(false);
   const [pesoFocus,   setPesoFocus]   = useState(false);
   const [notasFocus,  setNotasFocus]  = useState(false);
+
+  const [guardando, setGuardando] = useState(false);
+  const [error,     setError]     = useState('');
+
+  const handleGuardar = async () => {
+    setError('');
+
+    if (!nombre.trim()) {
+      setError('El nombre del perro es obligatorio.');
+      return;
+    }
+
+    // El back trunca la edad con parseInt (toIntOrNull) — evitamos mandar
+    // decimales que se pierdan en silencio.
+    const edadNum = edad.trim() ? parseInt(edad.trim(), 10) : undefined;
+    if (edad.trim() && !Number.isFinite(edadNum)) {
+      setError('La edad tiene que ser un número.');
+      return;
+    }
+
+    // En es-AR se escribe "7,5" — Number('7,5') da NaN, así que convertimos
+    // la coma a punto antes de parsear.
+    const pesoNum = peso.trim() ? Number(peso.trim().replace(',', '.')) : undefined;
+    if (peso.trim() && !Number.isFinite(pesoNum)) {
+      setError('El peso tiene que ser un número.');
+      return;
+    }
+
+    try {
+      setGuardando(true);
+      await createDog({
+        name: nombre.trim(),
+        breed: raza.trim() || undefined,
+        age: edadNum,
+        gender: genero ?? undefined,
+        weight: pesoNum,
+        extraNotes: notas.trim() || undefined,
+      });
+      router.back();
+    } catch (err: any) {
+      setError(err.message || 'No pudimos guardar la mascota. Intentá de nuevo.');
+    } finally {
+      setGuardando(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -85,6 +132,12 @@ export default function AgregarPerroScreen() {
 
         {/* ── FORM ── */}
         <View style={styles.form}>
+
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
 
           {/* Nombre */}
           <Text style={styles.label}>Nombre del perro</Text>
@@ -200,8 +253,16 @@ export default function AgregarPerroScreen() {
 
       {/* ── BOTÓN GUARDAR FIJO ── */}
       <View style={styles.ctaWrap}>
-        <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85}>
-          <Text style={styles.ctaBtnText}>Guardar Mascota</Text>
+        <TouchableOpacity
+          style={[styles.ctaBtn, (guardando || !nombre.trim()) && styles.ctaBtnDisabled]}
+          onPress={handleGuardar}
+          activeOpacity={0.85}
+          disabled={guardando || !nombre.trim()}
+        >
+          {guardando
+            ? <ActivityIndicator color={WHITE} />
+            : <Text style={styles.ctaBtnText}>Guardar Mascota</Text>
+          }
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -252,6 +313,12 @@ const styles = StyleSheet.create({
   form:  { paddingHorizontal: 20, gap: 0 },
   label: { fontSize: 14, fontWeight: '600', color: TEXT_PRIMARY, marginBottom: 8, marginTop: 16 },
 
+  errorBanner: {
+    backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca',
+    borderRadius: 10, padding: 12, marginTop: 16,
+  },
+  errorText: { fontSize: 13, color: '#ef4444', textAlign: 'center' },
+
   inputWrap: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: WHITE,
@@ -298,6 +365,7 @@ const styles = StyleSheet.create({
     shadowColor: GREEN, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
+  ctaBtnDisabled: { opacity: 0.6 },
   ctaBtnText: { fontSize: 16, fontWeight: '700', color: WHITE },
 
   placeholderLabel: { fontSize: 9, color: TEXT_MUTED, textAlign: 'center', marginTop: 2 },

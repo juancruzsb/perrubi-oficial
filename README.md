@@ -1,5 +1,5 @@
 # perrubi-oficial
- Perrubi, Uber para perros
+ Perrubi, Uber para perros.
 
 # Hecho por:
  - Noah Marabi - UX/UI

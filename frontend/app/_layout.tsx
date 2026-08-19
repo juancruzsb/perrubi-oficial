@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import React from 'react';
 import { Platform, View, StyleSheet } from 'react-native';
+import { SessionProvider } from '../context/session';
 
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   if (Platform.OS === 'web') {
@@ -21,14 +22,16 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   return (
-    <PhoneFrame>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="login" />
-        <Stack.Screen name="login-form" />
-        <Stack.Screen name="registro" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-    </PhoneFrame>
+    <SessionProvider>
+      <PhoneFrame>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="login" />
+          <Stack.Screen name="login-form" />
+          <Stack.Screen name="registro" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </PhoneFrame>
+    </SessionProvider>
   );
 }
 
