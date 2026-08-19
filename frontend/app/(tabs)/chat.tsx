@@ -35,11 +35,7 @@ type Message = {
   read?: boolean;
 };
 
-const initialMessages: Message[] = [
-  { id: '1', from: 'them', text: '¡Hola Noah! 👋\nYa estoy en camino.', time: '16:40' },
-  { id: '2', from: 'me', text: '¡Genial! Gracias ✨', time: '16:41', read: true },
-  { id: '3', from: 'them', text: 'Estoy llegando en 2 min.', time: '16:45' },
-];
+const initialMessages: Message[] = [];
 
 export default function ChatScreen() {
   const router = useRouter();
