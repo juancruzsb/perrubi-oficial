@@ -19,9 +19,11 @@ model User {
   passwordHash String     @map("password_hash")
   role         String?    // 'admin' o 'user'
   phone        String?
+  likes        String[]   // preferencias para el recomendador de paseadores (recommender.py)
   addresses    Address[]
   dogs         UserDog[]
   walks        WalkUser[]
+  reviews      Review[]
 
   @@map("user")
 }
@@ -64,9 +66,26 @@ model Walker {
   role           String? // 'admin' o 'user'
   profilePicture String? @map("profile_picture")
   description    String?
+  tags           String[]             // especialidades, para matching.py/recommender.py
+  latitude       Float?
+  longitude      Float?
   walks          Walk[]
+  availability   WalkerAvailability[]
+  reviews        Review[]
 
   @@map("walker")
+}
+
+// Franjas horarias en las que el paseador está disponible, en minutos desde
+// medianoche (mismo formato que matching.py espera en "available_slots").
+model WalkerAvailability {
+  id          Int    @id @default(autoincrement())
+  walkerId    Int    @map("walker_id")
+  walker      Walker @relation(fields: [walkerId], references: [id], onDelete: Cascade)
+  startMinute Int    @map("start_minute")
+  endMinute   Int    @map("end_minute")
+
+  @@map("walker_availability")
 }
 
 model Walk {
@@ -86,6 +105,7 @@ model Walk {
   dogs      WalkDog[]
   users     WalkUser[]
   chat      Chat?
+  review    Review?
 
   @@map("walk")
 }
@@ -151,4 +171,22 @@ model Address {
   walks     Walk[]
 
   @@map("address")
+}
+
+// Reseña de un User sobre el Walker de un Walk finalizado. Un paseo tiene a
+// lo sumo una reseña (walkId es único): calificar es 1:1 con el paseo, no
+// con la relación user-walker en general.
+model Review {
+  id        Int      @id @default(autoincrement())
+  walkId    Int      @unique @map("walk_id")
+  walk      Walk     @relation(fields: [walkId], references: [id], onDelete: Cascade)
+  walkerId  Int      @map("walker_id")
+  walker    Walker   @relation(fields: [walkerId], references: [id], onDelete: Cascade)
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("review")
 }

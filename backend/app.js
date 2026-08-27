@@ -10,6 +10,9 @@ import DogsRoutes from './src/routes/dogs.router.js'
 import WalksRoutes from './src/routes/walks.router.js'
 import AddressesRoutes from './src/routes/addresses.router.js'
 import ChatRoutes from './src/routes/chat.router.js'
+import MatchingRoutes from './src/routes/matching.router.js'
+import RecommendationsRoutes from './src/routes/recommendations.router.js'
+import ReviewsRoutes from './src/routes/reviews.router.js'
 import notFoundMiddleware from './src/middlewares/not-found.middleware.js'
 import errorMiddleware from './src/middlewares/error.middleware.js'
 import { initSockets } from './src/sockets/index.js'
@@ -32,6 +35,9 @@ app.use('/dogs', DogsRoutes)
 app.use('/walks', WalksRoutes)
 app.use('/walks', ChatRoutes)
 app.use('/addresses', AddressesRoutes)
+app.use('/matching', MatchingRoutes)
+app.use('/recommendations', RecommendationsRoutes)
+app.use('/reviews', ReviewsRoutes)
 
 app.use(notFoundMiddleware)
 app.use(errorMiddleware)
