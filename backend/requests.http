@@ -318,3 +318,53 @@ Content-Type: application/json
     }
   }
 }
+
+
+### =========================================================
+### IA (matching, recomendaciones, reseñas)
+### Necesita el microservicio de Python corriendo en paralelo:
+###   cd "Perrubi- Parte IA" && python -m uvicorn api:app --port 8000
+### =========================================================
+
+### Crear una reseña (User) — el @walkId de la sección WALKS tiene que estar
+### en estado "finished" antes de poder calificarlo (aceptar -> in_progress
+### -> finished, con los requests de la sección WALKS de arriba).
+POST {{baseUrl}}/reviews
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "walkId": {{walkId}},
+  "rating": 2,
+  "comment": "Llegó tarde y el perro volvió sucio"
+}
+
+### Ver el resumen de rating de un paseador puntual (cambiar el 1 por el id
+### real del walker, lo ves en la respuesta del walkerLogin de arriba)
+GET {{baseUrl}}/reviews/walker/1
+Authorization: Bearer {{userToken}}
+
+### Paseadores con mala calificación (requiere una cuenta con role "admin")
+GET {{baseUrl}}/reviews/low-quality
+Authorization: Bearer {{userToken}}
+
+### Buscar paseadores por matching — necesita que el Walker de prueba tenga
+### latitude/longitude/tags y al menos una fila en WalkerAvailability
+### cargados a mano en Prisma Studio (ver guía de pasos).
+POST {{baseUrl}}/matching/walkers
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "latitude": -34.60,
+  "longitude": -58.38,
+  "startMinutes": 540,
+  "durationMinutes": 30,
+  "needs": ["perro_grande", "adiestramiento"],
+  "maxDistanceKm": 5
+}
+
+### Recomendaciones de paseadores — necesita que el User de prueba tenga
+### "likes" cargados a mano en Prisma Studio (ver guía de pasos).
+GET {{baseUrl}}/recommendations/walkers?topN=5
+Authorization: Bearer {{userToken}}
