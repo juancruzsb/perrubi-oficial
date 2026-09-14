@@ -208,7 +208,7 @@ Content-Type: application/json
 
 ###
 
-@walkId = 9
+@walkId = 10
 
 ### Mis paseos (User o Walker, según el token)
 GET {{baseUrl}}/walks/me
@@ -274,7 +274,7 @@ Authorization: Bearer {{walkerToken}}
 Content-Type: application/json
 
 {
-  "body": "Perfecto, llego en 5 minutos"
+  "body": "Hola como estas? Estoy llegando"
 }
 
 ### Marcar como leídos los mensajes del otro participante
