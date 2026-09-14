@@ -11,6 +11,14 @@ datasource db {
   provider = "postgresql"
 }
 
+// Cada "model" de acá abajo describe una tabla de la base de datos Postgres.
+// Cada línea adentro de un model es una columna. Las líneas con "@relation"
+// no son columnas reales, son la forma que tiene Prisma de decir "esta tabla
+// está conectada con esta otra" (ej. un Walker tiene muchos Walk). El
+// String? con el signo de pregunta significa "puede quedar vacío (NULL)";
+// sin el "?" es obligatorio. String[] (con corchetes) significa "una lista
+// de textos", no un solo texto.
+
 model User {
   id           Int        @id @default(autoincrement())
   firstName    String?    @map("first_name")
