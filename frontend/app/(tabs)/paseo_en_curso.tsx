@@ -13,6 +13,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { dogsOf } from '../../api/walks';
 import { useWalkPolling } from '../../hooks/use-walk-polling';
+import { useWalkLocation } from '../../hooks/use-walk-location';
+import { WalkMap } from '../../components/walk-map';
 import { horaCorta, minutosTranscurridos, nombrePaseador, ratingNumero } from '../../lib/paseos';
 
 // ─── COLORES ────────────────────────────────────────────────
@@ -21,9 +23,6 @@ const GREEN_DARK     = '#1b5e20';
 const GREEN_MEDIUM   = '#58ad45';
 const GREEN_LIGHT    = '#f1f9ef';
 const GREEN_BORDER   = '#cdeacd';
-const MAP_BG         = '#f1f0ef';
-const MAP_ROAD       = '#e2e0dd';
-const MAP_BLOCK      = '#e7ecdf';
 const PIN_DARK       = '#101720';
 const WHITE          = '#ffffff';
 const TEXT_DARK       = '#1f2937';
@@ -41,6 +40,7 @@ export default function PaseoEnCursoScreen() {
   const router = useRouter();
   const { walkId } = useLocalSearchParams<{ walkId?: string }>();
   const { walk, error, cargando } = useWalkPolling(walkId, { poll: true });
+  const { location, enVivo } = useWalkLocation(walk?.id ?? null, walk?.location ?? null);
 
   // Guard de estado: esta pantalla solo sabe mostrar accepted/in_progress.
   // Si el paseo avanza (finished) o entran acá directo con un walkId de
@@ -109,46 +109,9 @@ export default function PaseoEnCursoScreen() {
           )}
         </View>
 
-        {/* ── MAPA (ilustración decorativa) ── */}
+        {/* ── MAPA (ubicación en vivo del paseador) ── */}
         <View style={styles.mapWrapper}>
-          <View style={styles.map}>
-            {/* bloques de manzanas */}
-            <View style={[styles.mapBlock, { top: 10, left: 10, width: 70, height: 50 }]} />
-            <View style={[styles.mapBlock, { top: 20, right: 30, width: 90, height: 60 }]} />
-            <View style={[styles.mapBlock, { top: 100, left: 30, width: 60, height: 40 }]} />
-            <View style={[styles.mapBlock, { bottom: 60, right: 10, width: 80, height: 50 }]} />
-            <View style={[styles.mapBlock, { bottom: 10, left: 60, width: 100, height: 45 }]} />
-
-            {/* calles */}
-            <View style={[styles.mapRoad, { top: 90, left: 0, right: 0, height: 3 }]} />
-            <View style={[styles.mapRoadVertical, { left: 140, top: 0, bottom: 0, width: 3 }]} />
-            <View style={[styles.mapRiver]} />
-
-            {/* etiquetas de calles */}
-            <Text style={[styles.mapLabel, { top: 8, right: 20 }]}>Parque{'\n'}Los Andes</Text>
-            <Text style={[styles.mapLabel, { top: 90, right: 12 }]}>Av. del Libertador</Text>
-            <Text style={[styles.mapLabel, { top: 175, left: 10 }]}>Club San Martín</Text>
-            <Text style={[styles.mapLabel, { top: 165, left: 150 }]}>Plaza{'\n'}Italia</Text>
-            <Text style={[styles.mapLabel, { bottom: 55, right: 20 }]}>Av. Rivadavia</Text>
-            <Text style={[styles.mapLabel, { bottom: 5, right: 5 }]}>Plaza{'\n'}Sarmiento</Text>
-
-            {/* ── RUTA (polilínea) ── */}
-            <View style={[styles.routeSeg, { width: 90, top: 78, left: 30, transform: [{ rotate: '55deg' }] }]} />
-            <View style={[styles.routeSeg, { width: 90, top: 128, left: 45, transform: [{ rotate: '-8deg' }] }]} />
-            <View style={[styles.routeSeg, { width: 80, top: 128, left: 130, transform: [{ rotate: '35deg' }] }]} />
-            <View style={[styles.routeSeg, { width: 100, top: 168, left: 195, transform: [{ rotate: '-12deg' }] }]} />
-            <View style={[styles.routeSeg, { width: 60, top: 190, left: 285, transform: [{ rotate: '55deg' }] }]} />
-            <View style={[styles.routeSeg, { width: 55, top: 235, left: 300, transform: [{ rotate: '5deg' }] }]} />
-
-            {/* pin de inicio (paw) */}
-            <View style={[styles.mapPin, { top: 55, left: 20 }]}>
-              <Ionicons name="paw" size={16} color={WHITE} />
-            </View>
-            {/* pin de destino (home) */}
-            <View style={[styles.mapPin, { top: 218, left: 285 }]}>
-              <Ionicons name="home" size={16} color={WHITE} />
-            </View>
-          </View>
+          <WalkMap location={location} enVivo={enVivo} conPerro={enCurso} />
 
           {/* ── HOJA DE DETALLE (sheet) ── */}
           <View style={styles.sheet}>
@@ -351,64 +314,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     borderRadius: 20,
     overflow: 'hidden',
-  },
-  map: {
-    height: 340,
-    backgroundColor: MAP_BG,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  mapBlock: {
-    position: 'absolute',
-    backgroundColor: MAP_BLOCK,
-    borderRadius: 6,
-  },
-  mapRoad: {
-    position: 'absolute',
-    backgroundColor: MAP_ROAD,
-  },
-  mapRoadVertical: {
-    position: 'absolute',
-    backgroundColor: MAP_ROAD,
-  },
-  mapRiver: {
-    position: 'absolute',
-    left: 40,
-    top: 140,
-    width: 3,
-    height: 170,
-    backgroundColor: '#cfe0ea',
-    borderRadius: 2,
-    transform: [{ rotate: '8deg' }],
-  },
-  mapLabel: {
-    position: 'absolute',
-    fontSize: 9,
-    color: '#9a9a92',
-    fontWeight: '500',
-    textAlign: 'right',
-  },
-  routeSeg: {
-    position: 'absolute',
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: GREEN,
-  },
-  mapPin: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: WHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: GREEN,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
   },
 
   // Sheet

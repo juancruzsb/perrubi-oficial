@@ -29,6 +29,8 @@ pasada las conecta.
 | `POST /walks/:id/chat/messages` | `app/(tabs)/chat.tsx` | único camino de escritura — los sockets del backend son read-only |
 | `PATCH /walks/:id/chat/read` | `app/(tabs)/chat.tsx` | al abrir el chat y al recibir un mensaje ajeno |
 | Socket.IO (`chat:join`/`leave`, `chat:message`/`read`/`closed`) | `app/(tabs)/chat.tsx` | vía `api/socket.ts` + `hooks/use-chat.ts`; si el socket no conecta, cae a poll de 5s sobre `GET /walks/:id/chat` |
+| `PATCH /walks/:id/location` | — (solo `backend/scripts/simulate-location.js`, no hay UI de paseador) | ver `UBICACION-TIEMPO-REAL.md` |
+| Socket.IO (`walk:join`/`leave`, `walk:location`) + `GET /maps/static` | `app/(tabs)/paseo_en_curso.tsx` | vía `hooks/use-walk-location.ts` + `components/walk-map.tsx`; fallback a `GET /walks/:id` (ya pollea cada 5s) si el socket no conecta |
 
 ## Qué quedó explícitamente afuera (y por qué)
 
@@ -178,10 +180,12 @@ sin chat todavía), y chat cerrado (paseo en estado final).
   `PaymentMethod`, `Notification`) antes de poder cablearse; hoy no existe ni el schema ni los
   endpoints.
 - **Rol Walker** — si se agrega una vista de paseador, ya están los endpoints
-  (`walkerRegister`/`walkerLogin`/`GET /walks/available`/`PATCH /:id/accept`) y el middleware
-  (`verifyWalker`) del lado del backend; falta toda la UI y la decisión de cómo el login distingue
-  entre los dos tipos de cuenta. Mientras tanto, cualquier verificación que necesite un paseo en
-  `accepted`/`in_progress`/`finished` se hace con `backend/requests.http` y un token de walker.
+  (`walkerRegister`/`walkerLogin`/`GET /walks/available`/`PATCH /:id/accept`, y ahora también
+  `PATCH /:id/location`) y el middleware (`verifyWalker`) del lado del backend; falta toda la UI
+  y la decisión de cómo el login distingue entre los dos tipos de cuenta. Mientras tanto,
+  cualquier verificación que necesite un paseo en `accepted`/`in_progress`/`finished`, incluida
+  la ubicación en vivo, se hace con `backend/requests.http` o `backend/scripts/simulate-location.js`
+  y un token de walker — ver `UBICACION-TIEMPO-REAL.md`.
 - **"Usar mi ubicación actual"** en `crear-paseo.tsx` y **"Ver ubicación"** en `chat.tsx` siguen sin
   `onPress` (no-op). Implementarlo requiere `npx expo install expo-location`, permisos nativos
   (`app.json`) y usar el path de `POST /addresses` con `{latitude, longitude}` en vez de `street`.
@@ -189,10 +193,12 @@ sin chat todavía), y chat cerrado (paseo en estado final).
   hay endpoint de upload de archivos en el backend (`Dog.photo` es un `String?` que hoy nadie llena).
 - **"Llamar" al paseador** — botón deshabilitado en `paseo_en_curso.tsx`; el backend no expone
   `Walker.phone` en `WALK_INCLUDE` a propósito (decisión de privacidad, no técnica).
-- **Mapas reales** — `paseo_en_curso.tsx` y `detalles_del_paseo.tsx` siguen mostrando una
-  ilustración dibujada a mano (`View`s posicionadas), no una ruta real. Requiere
-  `react-native-maps` + `POST /maps/route` + guardar la polyline en algún lado (el schema no tiene
-  dónde hoy).
+- **Mapas reales** — `paseo_en_curso.tsx` ya muestra la ubicación real del paseador (ver
+  `UBICACION-TIEMPO-REAL.md`), pero como una imagen estática (`GET /maps/static`, `<Image>`),
+  no un mapa nativo pan/zoom — eso requeriría `react-native-maps` + dev build y perdería el
+  soporte web/Expo Go que tiene hoy. `detalles_del_paseo.tsx` sigue con la ilustración dibujada
+  a mano; no se tocó en esta pasada. Ruta/polyline caminada: sigue sin implementar (`POST
+  /maps/route` existe pero nada la llama ni guarda el resultado).
 - **Editar/eliminar perro** — `PUT`/`DELETE /dogs/:id` existen pero no hay UI; la tarjeta de perro
   en `mis_perros.tsx` no es clicable.
 - **Direcciones huérfanas** — cada `POST /walks` desde `crear-paseo.tsx` crea una fila nueva en

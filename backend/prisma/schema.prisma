@@ -86,6 +86,7 @@ model Walk {
   dogs      WalkDog[]
   users     WalkUser[]
   chat      Chat?
+  location  WalkLocation?
 
   @@map("walk")
 }
@@ -134,6 +135,17 @@ model ChatMessage {
 
   @@index([chatId, createdAt])
   @@map("chat_message")
+}
+
+model WalkLocation {
+  id        Int      @id @default(autoincrement())
+  walkId    Int      @unique @map("walk_id")
+  walk      Walk     @relation(fields: [walkId], references: [id], onDelete: Cascade)
+  latitude  Float
+  longitude Float
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("walk_location")
 }
 
 model Address {

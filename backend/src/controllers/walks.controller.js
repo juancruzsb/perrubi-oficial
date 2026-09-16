@@ -1,6 +1,7 @@
 import WalksService from '../services/walks.service.js';
 import asyncHandler from '../utils/async-handler.js';
 import HttpError from '../utils/http-error.js';
+import { toFloatOrNull } from '../utils/sanitize.js';
 
 const WalksController = {};
 
@@ -120,6 +121,32 @@ WalksController.changeStatus = asyncHandler(async (req, res) => {
 
   const updated = await WalksService.changeStatus(walk, status);
   res.status(200).json(updated);
+});
+
+WalksController.updateLocation = asyncHandler(async (req, res) => {
+  const latitude = toFloatOrNull(req.body.latitude);
+  const longitude = toFloatOrNull(req.body.longitude);
+
+  if (latitude === null || longitude === null) {
+    throw new HttpError(400, 'latitude y longitude son obligatorios');
+  }
+
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    throw new HttpError(400, 'Coordenadas inválidas');
+  }
+
+  const walk = await WalksService.getWalkById(req.params.id);
+
+  if (!walk) {
+    throw new HttpError(404, 'Paseo no encontrado');
+  }
+
+  if (walk.walkerId !== req.user.id) {
+    throw new HttpError(403, 'No sos el paseador de este paseo');
+  }
+
+  const location = await WalksService.upsertLocation(walk, { latitude, longitude });
+  res.status(200).json(location);
 });
 
 export default WalksController;

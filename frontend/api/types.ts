@@ -72,6 +72,17 @@ export type WalkUserRow = {
   user: { id: number; firstName: string | null; lastName: string | null };
 };
 
+// Última posición conocida del paseador (no un historial — un upsert por
+// paseo). A diferencia de weight/price/averageRating, latitude/longitude
+// SÍ son number: WalkLocation las tiene como Float en Prisma, no Decimal.
+export type WalkLocation = {
+  id: number;
+  walkId: number;
+  latitude: number;
+  longitude: number;
+  updatedAt: string; // ISO
+};
+
 export type Walk = {
   id: number;
   walkerId: number | null;
@@ -88,6 +99,7 @@ export type Walk = {
   address: Address | null;
   dogs: WalkDogRow[];
   users: WalkUserRow[];
+  location: WalkLocation | null;
 };
 
 // ─── CHAT ─────────────────────────────────────────────────────

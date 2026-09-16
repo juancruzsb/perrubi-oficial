@@ -1,5 +1,10 @@
 # Ubicación en tiempo real del paseador — análisis y plan
 
+> **Estado: implementado — backend + lado dueño.** Este documento se escribió como análisis
+> antes de tocar código; se deja tal cual para el razonamiento original, pero **§2 (frontend)
+> no refleja lo que se construyó** — ver "Qué se implementó realmente" al final del archivo
+> para el resultado real y qué quedó afuera (el lado paseador, sobre todo).
+
 ## Resumen
 
 Hoy el "mapa" de `paseo_en_curso.tsx` es 100% decorativo: un `View` con
@@ -191,3 +196,63 @@ En `paseo_en_curso.tsx`, reemplazar el bloque decorativo
 5. Pulir: throttling de escritura (no mandar cada metro), manejo de permiso
    denegado, indicador de "última actualización hace X" si el socket se
    desconecta.
+
+## Qué se implementó realmente
+
+El análisis de arriba se escribió antes de tocar código. Dos de sus supuestos no se sostuvieron
+contra el repo y cambiaron el alcance real:
+
+1. **No existe ninguna vista de paseador** — `frontend/CLAUDE.md` y
+   `INTEGRACION-BACKEND-FRONTEND.md` confirman que el frontend es 100% del dueño: no hay login
+   de walker, `User.role` no incluye `'walker'`, y `chat.tsx` hardcodea `senderType === 'user'`.
+   Construir el lado emisor (§2.2 de este doc) requiere primero auth y ruteo por rol — un
+   proyecto aparte. Se implementó **backend + lado dueño únicamente**; el GPS real se simula.
+2. **`react-native-maps` no es viable hoy** — la app corre en Expo Go y en web, y ese paquete
+   necesita dev build y no tiene soporte web. En vez de eso: `GET /maps/static`, un proxy nuevo
+   del backend a la Maps Static API de Google que devuelve un PNG con el pin ya renderizado, y
+   el frontend lo muestra con un `<Image>` (`components/walk-map.tsx`). Cero dependencias
+   nativas nuevas.
+
+### Backend
+
+- Modelo `WalkLocation` (`walk_location`, una fila por paseo vía `upsert`, no historial) —
+  migración `20260916112314_add_walk_location` (aplicada a mano con `prisma db execute` +
+  `migrate resolve`, no con `migrate dev`: había drift preexistente y no relacionado en la base
+  — ver `backend/CAMBIOS-BACKEND.md` §5).
+- `PATCH /walks/:id/location` (`verifyWalker` + `walk.walkerId === req.user.id`, acepta
+  `accepted`/`in_progress`, 409 en cualquier otro estado) — `walks.controller.js` /
+  `walks.service.js`.
+- `WALK_INCLUDE` ahora trae `location` — el polling que ya usaba `paseo_en_curso.tsx` (cada 5s)
+  la recibe gratis, sin endpoint nuevo.
+- Socket.IO: `walk:join`/`walk:leave` (separados de `chat:join`, para no depender de que el
+  chat esté abierto) y el evento `walk:location`, emitido desde `WalksService.upsertLocation`
+  vía `emitToWalk` — ver `backend/CLAUDE.md`, sección "Real-time".
+- `GET /maps/static` — proxy a la Maps Static API (nueva API habilitada en el proyecto de GCP;
+  Routes/Places no la incluyen), autenticado por `?token=` porque `<Image>` no manda headers de
+  forma confiable (`verifyTokenFromQuery`, nuevo en `auth.middlewares.js`).
+- `backend/scripts/simulate-location.js` — sustituto de la app del paseador para poder probar
+  el feature de punta a punta: hace login de walker y manda `PATCH /location` con coordenadas
+  que avanzan, cada pocos segundos.
+
+### Frontend (dueño)
+
+- `api/types.ts`: `WalkLocation`, `Walk.location`.
+- `api/socket.ts`: `joinWalk`/`leaveWalk`. `api/maps.ts` (nuevo): `staticMapUrl(...)`.
+- `hooks/use-walk-location.ts` — socket con fallback al polling que ya trae `walk.location`,
+  mismo patrón que `use-chat.ts`.
+- `components/walk-map.tsx` — imagen estática + overlay "Actualizado hace X" / "En vivo", con
+  placeholder mientras no hay ubicación y si falla la carga de la imagen.
+- `app/(tabs)/paseo_en_curso.tsx` — el mapa decorativo (`View`s a mano) se reemplazó por
+  `<WalkMap>`; se sacaron los estilos que quedaron muertos.
+
+### Qué queda afuera
+
+- **Lado paseador (emitir el GPS real)** — bloqueado por la falta de rol/auth de paseador en el
+  frontend (ver arriba). Mientras tanto: `backend/scripts/simulate-location.js`.
+- **Mapa nativo pan/zoom** (`react-native-maps`) — sigue siendo válido como mejora futura si se
+  decide pagar el costo de un dev build y perder Expo Go/web; `WalkMap` aísla el cambio a un
+  solo componente.
+- **`detalles_del_paseo.tsx`** — no se tocó; sigue con el mapa decorativo.
+- Historial del recorrido, ETA/ruta hasta el punto de encuentro, y rate limiting del `PATCH` de
+  ubicación — mismo motivo que ya explicaba el análisis original: no hacían falta para "mostrar
+  dónde está" y son features/hardenings separados.

@@ -208,7 +208,7 @@ Content-Type: application/json
 
 ###
 
-@walkId = 10
+@walkId = 13
 
 ### Mis paseos (User o Walker, según el token)
 GET {{baseUrl}}/walks/me
@@ -283,6 +283,45 @@ Authorization: Bearer {{userToken}}
 
 
 ### =========================================================
+### UBICACIÓN EN TIEMPO REAL (solo el paseador asignado, paseo accepted/in_progress)
+### No hay UI de paseador en el frontend todavía -> mientras tanto, esto (o
+### backend/scripts/simulate-location.js) es la única forma de mandar GPS.
+### El dueño la recibe por socket (evento walk:location, room walk:{{walkId}})
+### o por polling normal de GET /walks/{{walkId}} (ver UBICACION-TIEMPO-REAL.md).
+### =========================================================
+
+### Publicar la posición del paseador
+PATCH {{baseUrl}}/walks/{{walkId}}/location
+Authorization: Bearer {{walkerToken}}
+Content-Type: application/json
+
+{
+  "latitude": -34.5667227,
+  "longitude": -58.4877776
+}
+
+### Coordenadas inválidas -> 400
+PATCH {{baseUrl}}/walks/{{walkId}}/location
+Authorization: Bearer {{walkerToken}}
+Content-Type: application/json
+
+{
+  "latitude": 999,
+  "longitude": -58.4877776
+}
+
+### Con el token del dueño (no es el paseador) -> 403
+PATCH {{baseUrl}}/walks/{{walkId}}/location
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "latitude": -34.5667227,
+  "longitude": -58.4877776
+}
+
+
+### =========================================================
 ### MAPS
 ### =========================================================
 
@@ -318,3 +357,9 @@ Content-Type: application/json
     }
   }
 }
+
+### Imagen de mapa estático con un pin (reemplazo de react-native-maps para
+### mostrar la ubicación en vivo sin dev build). El token va en la query
+### porque <Image> del frontend no puede mandar el header Authorization de
+### forma confiable. Abrir en el navegador (no en el REST Client) para verla.
+GET {{baseUrl}}/maps/static?lat=-34.5667227&lng=-58.4877776&token={{userToken}}

@@ -129,6 +129,51 @@ Verificado end-to-end contra la base real con `requests.http`: `GET /walks/:id` 
 `PATCH /walks/:id/accept` devuelve `walker.description` y `walker.reviewCount` (`null` si el
 paseador no cargó bio/reseñas todavía, que es el caso esperado para una cuenta nueva).
 
+## 5. Ubicación en tiempo real del paseador
+
+**Archivos**: `prisma/schema.prisma`,
+`prisma/migrations/20260916112314_add_walk_location/`, `src/services/walks.service.js`,
+`src/controllers/walks.controller.js`, `src/routes/walks.router.js`,
+`src/sockets/index.js`, `src/services/maps.service.js`,
+`src/controllers/maps.controller.js`, `src/routes/maps.router.js`,
+`src/middlewares/auth.middlewares.js`.
+
+Ver `../UBICACION-TIEMPO-REAL.md` para el análisis completo. Resumen del resultado:
+
+- Modelo nuevo `WalkLocation` (una fila por paseo, `upsert` en cada tick — no es un historial).
+- `PATCH /walks/:id/location` (`verifyWalker` + `walk.walkerId === req.user.id`), acepta
+  `accepted`/`in_progress` (409 en cualquier otro estado), valida rango de coordenadas y
+  emite `walk:location` por Socket.IO a la room `walk:<id>` (`emitToWalk`, ya existía).
+- `sockets/index.js` suma `walk:join`/`walk:leave`, separados de `chat:join`/`chat:leave`
+  para que el dueño reciba la ubicación sin depender de tener el chat abierto — reusa
+  `ChatService.assertParticipant`, que a pesar del nombre solo chequea participación en el
+  walk, no en un `Chat`.
+- `GET /maps/static` — proxy nuevo a la Maps Static API de Google (no a Routes/Places, que
+  son las que ya usaba `maps.service.js`; hubo que habilitar esa API en el proyecto de GCP).
+  Reemplaza a `react-native-maps` en esta pasada: el frontend corre en Expo Go y en web, y
+  ese paquete necesita dev build y no tiene soporte web. Devuelve un PNG con el pin ya
+  renderizado por Google — el frontend solo lo pone en un `<Image>`.
+- `verifyTokenFromQuery` (nuevo, en `auth.middlewares.js`) — variante de `verifyToken` que
+  también acepta el JWT por `?token=`, porque `<Image>` no manda headers de forma confiable
+  (React Native Web los ignora). Solo la usa `/maps/static`.
+
+**La migración tampoco pudo correr con `prisma migrate dev`**, pero por un motivo distinto al
+punto 2: acá `.env` sí existe y `migrate status` decía "up to date", pero al ejecutar
+`migrate dev` Prisma detectó **drift preexistente y no relacionado** — hay una migración
+aplicada directamente contra la base de Neon (`20260827120000_add_review_and_ia_fields`,
+tablas `review`/`walker_availability`, columnas nuevas en `user`/`walker`) que no está en
+`prisma/migrations/` de este repo. `migrate dev` iba a pedir un `reset` de todo el schema
+`public` para resolverlo, así que **no se corrió**: se aplicó el SQL de `walk_location` a mano
+(mismo patrón que el punto 2) con `prisma db execute` + `prisma migrate resolve --applied`, sin
+tocar el resto del drift. Ese drift preexistente queda sin resolver — es trabajo de quien
+escribió `20260827120000` documentar esa migración en el repo, no algo que corresponda arreglar
+acá de paso.
+
+Verificado end-to-end contra la base real con `requests.http` (login de user y walker, crear
+perro/paseo, aceptar, `PATCH /location` en 200/403/400/409, `GET /walks/:id` con `location`
+poblado, `GET /maps/static` devolviendo un PNG real) y con `scripts/simulate-location.js`
+mandando coordenadas cada pocos segundos.
+
 ## Verificación pendiente (requiere `.env` real)
 
 Una vez completado `backend/.env`, correr contra `backend/requests.http` (ya actualizado a

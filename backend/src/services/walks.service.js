@@ -2,6 +2,7 @@ import prisma from "../../db.js";
 import HttpError from "../utils/http-error.js";
 import ChatService from "./chat.service.js";
 import { toIntOrNull } from "../utils/sanitize.js";
+import { emitToWalk } from "../sockets/index.js";
 
 const WalksService = {};
 
@@ -39,7 +40,13 @@ const WALK_INCLUDE = {
   address: true,
   dogs: { include: { dog: true } },
   users: { include: { user: { select: { id: true, firstName: true, lastName: true } } } },
+  location: true,
 };
+
+// Estados en los que tiene sentido que el paseador esté mandando su
+// posición: 'accepted' cubre el trayecto de acercamiento a buscar al perro,
+// no solo el paseo en sí.
+const LOCATION_TRACKABLE_STATUSES = ['accepted', 'in_progress'];
 
 WalksService.userOwnsAllDogs = async (userId, dogIds) => {
   const count = await prisma.userDog.count({
@@ -205,6 +212,33 @@ WalksService.changeStatus = async (walk, newStatus) => {
 
     return updated;
   });
+};
+
+// Guarda solo la ÚLTIMA posición conocida del paseador (upsert, no
+// historial) y avisa por socket a quien esté mirando este paseo. Se llama
+// desde el controller ya con el walk (evita un segundo findUnique) y las
+// coordenadas ya validadas.
+WalksService.upsertLocation = async (walk, { latitude, longitude }) => {
+  const currentStatus = walk.status || 'searching';
+
+  if (!LOCATION_TRACKABLE_STATUSES.includes(currentStatus)) {
+    throw new HttpError(409, 'El paseo no está en curso');
+  }
+
+  const location = await prisma.walkLocation.upsert({
+    where: { walkId: walk.id },
+    create: { walkId: walk.id, latitude, longitude },
+    update: { latitude, longitude },
+  });
+
+  emitToWalk(walk.id, 'walk:location', {
+    walkId: walk.id,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    updatedAt: location.updatedAt,
+  });
+
+  return location;
 };
 
 export default WalksService;

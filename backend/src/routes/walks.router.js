@@ -12,5 +12,6 @@ router.post('/', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyUser, WalksC
 router.put('/:id', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyUser, WalksController.updateWalk)
 router.patch('/:id/accept', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyWalker, WalksController.acceptWalk)
 router.patch('/:id/status', AuthMiddlewares.verifyToken, WalksController.changeStatus)
+router.patch('/:id/location', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyWalker, WalksController.updateLocation)
 
 export default router;

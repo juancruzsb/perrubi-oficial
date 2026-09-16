@@ -51,13 +51,14 @@ export function isSocketConnected(): boolean {
   return Boolean(socket?.connected);
 }
 
-// chat:join espera un ack — { ok: true } o { error: string }. Si el server
-// no contesta en 5s (caído, o el evento se perdió), tratamos como error para
-// que el caller pueda degradar a polling en vez de esperar para siempre.
-export function joinWalkChat(
-  socket: Socket,
-  walkId: number
-): Promise<{ ok: true } | { error: string }> {
+type JoinAck = { ok: true } | { error: string };
+
+// chat:join / walk:join esperan un ack — { ok: true } o { error: string }. Si
+// el server no contesta en 5s (caído, o el evento se perdió), tratamos como
+// error para que el caller pueda degradar a polling en vez de esperar para
+// siempre. Compartido por joinWalkChat y joinWalk: mismo evento de ack, solo
+// cambia el nombre del evento emitido.
+function emitJoin(socket: Socket, event: string, walkId: number): Promise<JoinAck> {
   return new Promise((resolve) => {
     let resuelto = false;
     const timeout = setTimeout(() => {
@@ -67,7 +68,7 @@ export function joinWalkChat(
       }
     }, 5000);
 
-    socket.emit('chat:join', { walkId }, (res: { ok: true } | { error: string }) => {
+    socket.emit(event, { walkId }, (res: JoinAck) => {
       if (resuelto) return;
       resuelto = true;
       clearTimeout(timeout);
@@ -76,6 +77,21 @@ export function joinWalkChat(
   });
 }
 
+export function joinWalkChat(socket: Socket, walkId: number): Promise<JoinAck> {
+  return emitJoin(socket, 'chat:join', walkId);
+}
+
 export function leaveWalkChat(socket: Socket, walkId: number): void {
   socket.emit('chat:leave', { walkId });
+}
+
+// walk:join/leave — separados de chat:join a propósito: paseo_en_curso.tsx
+// quiere la ubicación en vivo sin depender de que el chat esté abierto (ver
+// sockets/index.js del backend). Misma room walk:<id> que el chat.
+export function joinWalk(socket: Socket, walkId: number): Promise<JoinAck> {
+  return emitJoin(socket, 'walk:join', walkId);
+}
+
+export function leaveWalk(socket: Socket, walkId: number): void {
+  socket.emit('walk:leave', { walkId });
 }

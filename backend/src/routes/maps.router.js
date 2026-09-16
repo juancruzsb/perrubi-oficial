@@ -6,5 +6,6 @@ const router = Router();
 
 router.post('/route', AuthMiddlewares.verifyToken, MapsController.getRoute);
 router.post('/directions', AuthMiddlewares.verifyToken, MapsController.getDirection);
+router.get('/static', AuthMiddlewares.verifyTokenFromQuery, MapsController.getStaticMap);
 
 export default router;

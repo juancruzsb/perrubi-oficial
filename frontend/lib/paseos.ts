@@ -87,6 +87,26 @@ export function minutosTranscurridos(desdeIso: string | null): number | null {
   return Math.max(0, Math.floor((Date.now() - inicio) / 60000));
 }
 
+// Para el indicador de "actualizado hace X" de la ubicación en vivo
+// (use-walk-location.ts). A diferencia de minutosTranscurridos, acá importan
+// los segundos: si el socket está conectado el número tiene que sentirse
+// "vivo" (actualizándose cada 5s), no quedarse en "hace 0 min" un rato largo.
+export function haceCuanto(iso: string | null): string {
+  if (!iso) return '';
+  const desde = Date.parse(iso);
+  if (Number.isNaN(desde)) return '';
+
+  const segundos = Math.max(0, Math.floor((Date.now() - desde) / 1000));
+  if (segundos < 5) return 'justo ahora';
+  if (segundos < 60) return `hace ${segundos} s`;
+
+  const minutos = Math.floor(segundos / 60);
+  if (minutos < 60) return `hace ${minutos} min`;
+
+  const horas = Math.floor(minutos / 60);
+  return `hace ${horas} h`;
+}
+
 // ─── ESTADO → PRESENTACIÓN (mis-paseos.tsx: 5 estados, 3 filtros) ─────
 
 export type PresentacionEstado = {
