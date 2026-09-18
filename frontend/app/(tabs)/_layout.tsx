@@ -38,7 +38,7 @@ export default function TabLayout() {
     );
   }
   if (!token) {
-    return <Redirect href="/login" />;
+    return <Redirect href="/elegir-modo" />;
   }
 
   return (
@@ -105,6 +105,11 @@ export default function TabLayout() {
 
       <Tabs.Screen
         name="agregar-perro"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="direcciones"
         options={{ href: null }}
       />
 

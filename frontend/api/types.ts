@@ -17,6 +17,22 @@ export type User = {
   phone: string | null;
 };
 
+// ─── WALKER (identidad del paseador, separada de User — ver Walker en
+// prisma/schema.prisma) ──────────────────────────────────────────
+// averageRating es Decimal? en Prisma → llega como STRING.
+export type Walker = {
+  id: number;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  phone: string | null;
+  averageRating: string | null;
+  reviewCount: number | null;
+  role: string | null;
+  profilePicture: string | null;
+  description: string | null;
+};
+
 // ─── DOGS ─────────────────────────────────────────────────────
 // weight es Decimal? en Prisma → llega como STRING en el JSON, no número.
 export type Dog = {
