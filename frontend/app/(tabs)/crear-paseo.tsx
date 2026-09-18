@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   heroBannerBg: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#d4edda',
     alignItems: 'center',
     justifyContent: 'center',

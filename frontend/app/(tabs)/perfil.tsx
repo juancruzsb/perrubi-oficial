@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // ─── COLORES ────────────────────────────────────────────────
@@ -41,6 +42,8 @@ const menuItems: MenuItem[] = [
 ];
 
 export default function PerfilScreen() {
+  const router = useRouter();
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor={GREEN} />
@@ -75,6 +78,7 @@ export default function PerfilScreen() {
                 index === menuItems.length - 1 && styles.menuItemLast,
               ]}
               activeOpacity={0.6}
+              onPress={item.id === 'direcciones' ? () => router.push('/direcciones') : undefined}
             >
               <View style={styles.menuIconWrap}>
                 <Ionicons name={item.icon} size={20} color={GREEN} />
