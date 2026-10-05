@@ -1,9 +1,15 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, FlatList,
-  StyleSheet, SafeAreaView, StatusBar,
-  ActivityIndicator, RefreshControl,
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { getMyWalksAsWalker, changeWalkStatusAsWalker } from '../../../api/walker';
@@ -40,6 +46,15 @@ export default function MisPaseosPaseadorScreen() {
   const [error, setError] = useState('');
   const [refrescando, setRefrescando] = useState(false);
   const [actualizandoId, setActualizandoId] = useState<number | null>(null);
+  // Iniciar/finalizar no tienen vuelta atrás: el primer toque pide confirmar
+  // (inline, no Alert: Alert.alert no hace nada en web) y el segundo ejecuta.
+  const [confirmando, setConfirmando] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!confirmando) return;
+    const t = setTimeout(() => setConfirmando(null), 4000);
+    return () => clearTimeout(t);
+  }, [confirmando]);
 
   const cargar = useCallback(async (esRefresh = false) => {
     try {
@@ -72,19 +87,29 @@ export default function MisPaseosPaseadorScreen() {
     }
   };
 
-  const cargando = walks === null;
+  const pedirCambio = (walkId: number, nuevoEstado: WalkStatus) => {
+    const clave = `${walkId}:${nuevoEstado}`;
+    if (confirmando === clave) {
+      setConfirmando(null);
+      avanzarEstado(walkId, nuevoEstado);
+    } else {
+      setConfirmando(clave);
+    }
+  };
+
+  const cargando = walks === null && !error;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mis paseos</Text>
       </View>
 
       {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
+        <TouchableOpacity style={styles.errorBanner} activeOpacity={0.7} onPress={() => cargar()}>
+          <Text style={styles.errorText}>{error}{walks === null ? ' Tocá para reintentar.' : ''}</Text>
+        </TouchableOpacity>
       ) : null}
 
       {cargando ? (
@@ -93,7 +118,7 @@ export default function MisPaseosPaseadorScreen() {
         </View>
       ) : (
         <FlatList
-          data={walks}
+          data={walks ?? []}
           keyExtractor={(w) => String(w.id)}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -123,24 +148,24 @@ export default function MisPaseosPaseadorScreen() {
                 {estado === 'accepted' && (
                   <TouchableOpacity
                     style={[styles.btn, actualizando && styles.btnDisabled]}
-                    onPress={(e) => { e.stopPropagation(); avanzarEstado(item.id, 'in_progress'); }}
+                    onPress={(e) => { e.stopPropagation(); pedirCambio(item.id, 'in_progress'); }}
                     disabled={actualizando}
                   >
                     {actualizando
                       ? <ActivityIndicator color={WHITE} />
-                      : <Text style={styles.btnText}>Iniciar paseo</Text>}
+                      : <Text style={styles.btnText}>{confirmando === `${item.id}:in_progress` ? '¿Confirmar? Tocá de nuevo' : 'Iniciar paseo'}</Text>}
                   </TouchableOpacity>
                 )}
 
                 {estado === 'in_progress' && (
                   <TouchableOpacity
                     style={[styles.btn, styles.btnGreen, actualizando && styles.btnDisabled]}
-                    onPress={(e) => { e.stopPropagation(); avanzarEstado(item.id, 'finished'); }}
+                    onPress={(e) => { e.stopPropagation(); pedirCambio(item.id, 'finished'); }}
                     disabled={actualizando}
                   >
                     {actualizando
                       ? <ActivityIndicator color={WHITE} />
-                      : <Text style={styles.btnText}>Finalizar paseo</Text>}
+                      : <Text style={styles.btnText}>{confirmando === `${item.id}:finished` ? '¿Confirmar? Tocá de nuevo' : 'Finalizar paseo'}</Text>}
                   </TouchableOpacity>
                 )}
               </TouchableOpacity>

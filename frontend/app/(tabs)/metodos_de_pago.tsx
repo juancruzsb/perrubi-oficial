@@ -4,16 +4,15 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN         = '#4caf50';
-const GREEN_DARK     = '#1b5e20';
 const GREEN_LIGHT    = '#eaf7eb';
 const BORDER         = '#e6e9e6';
 const BG             = '#fbfdfb';
@@ -68,7 +67,7 @@ export default function MetodosDePagoScreen() {
   const [seleccionado, setSeleccionado] = useState('1');
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       <View style={styles.container}>

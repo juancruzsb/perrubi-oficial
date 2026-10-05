@@ -46,6 +46,13 @@ export function useWalkPolling(
         return;
       }
 
+      // Las pantallas de Tabs no se desmontan, así que si cambia el id este
+      // hook sigue con el estado del paseo anterior: se descarta para no
+      // mostrar (ni decidir redirecciones con) datos de otro paseo.
+      setWalk((prev) => (prev && prev.id !== id ? null : prev));
+      setCargando(true);
+      setError('');
+
       let cancelado = false;
       let timer: ReturnType<typeof setTimeout>;
 
@@ -73,5 +80,7 @@ export function useWalkPolling(
     }, [id, idValido, poll, pollMs])
   );
 
-  return { walk, error, id, cargando };
+  // Mientras se carga el paseo nuevo, no se devuelve el viejo.
+  const actual = walk && walk.id === id ? walk : null;
+  return { walk: actual, error, id, cargando: cargando && !actual };
 }

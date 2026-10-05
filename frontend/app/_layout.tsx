@@ -50,7 +50,8 @@ const styles = StyleSheet.create({
   },
   phone: {
     width: 390,
-    height: 844,
+    // Se achica en ventanas bajas (<844px) en vez de quedar recortado.
+    height: 'min(844px, 96vh)' as any,
     backgroundColor: '#ffffff',
     borderRadius: 50,
     overflow: 'hidden',

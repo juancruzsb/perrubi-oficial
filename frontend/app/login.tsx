@@ -4,18 +4,16 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
-  Platform,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 const GREEN       = '#4caf50';
 const GREEN_LIGHT = '#e8f5e9';
-const GREEN_DARK  = '#2e7d32';
 const WHITE       = '#ffffff';
 const TEXT_PRIMARY   = '#1a1a1a';
-const TEXT_SECONDARY = '#666666';
 const TEXT_MUTED     = '#aaaaaa';
 const BORDER         = '#e0e0e0';
 
@@ -23,10 +21,14 @@ export default function LoginScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
 
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
 
         {/* ── LOGO ── */}
         <View style={styles.logoSection}>
@@ -119,21 +121,21 @@ export default function LoginScreen() {
           </View>
 
           {/* Google */}
-          <TouchableOpacity style={styles.btnGoogle} activeOpacity={0.85}>
+          <TouchableOpacity style={[styles.btnGoogle, { opacity: 0.5 }]} activeOpacity={1} disabled>
             {/* TODO: <Image source={require('@/assets/icons/google.png')} style={{width:20,height:20}} /> */}
             <Text style={styles.btnGoogleIcon}>G</Text>
-            <Text style={styles.btnGoogleText}>Continuar con Google</Text>
+            <Text style={styles.btnGoogleText}>Google · Próximamente</Text>
           </TouchableOpacity>
 
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe:      { flex: 1, backgroundColor: WHITE },
-  container: { flex: 1, paddingHorizontal: 28, paddingTop: 32, paddingBottom: 24, justifyContent: 'space-between' },
+  container: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 32, paddingBottom: 24, justifyContent: 'space-between' },
 
   // Logo
   logoSection:   { alignItems: 'center' },

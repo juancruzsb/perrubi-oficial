@@ -40,7 +40,16 @@ async function withWalkerToken<T>(
   const token = await obtenerTokenPaseador();
   // token: '' si no hay sesión → apiRequest no manda Authorization y el back
   // responde 401 en vez de, por error, usar el token del dueño.
-  return apiRequest<T>(endpoint, { ...options, token: token ?? '' });
+  return apiRequest<T>(endpoint, { ...options, token: token ?? '', session: 'walker' });
+}
+
+// PATCH /walks/:id/location — el paseador publica su posición (el back la
+// guarda y la difunde por socket al dueño). 409 si el paseo no está en curso.
+export function updateWalkLocation(
+  id: number,
+  coords: { latitude: number; longitude: number }
+): Promise<unknown> {
+  return withWalkerToken<unknown>(`/walks/${id}/location`, { method: 'PATCH', body: coords });
 }
 
 // GET /walks/available — paseos en estado 'searching', para que el paseador

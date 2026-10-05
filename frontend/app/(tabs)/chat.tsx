@@ -5,14 +5,14 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyWalks, dogsOf } from '../../api/walks';
 import { useChat } from '../../hooks/use-chat';
@@ -49,6 +49,7 @@ function subtituloEstado(walk: Walk, cerrado: boolean): string {
 
 export default function ChatScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { user } = useSession();
   const { walkId: walkIdParam } = useLocalSearchParams<{ walkId?: string }>();
   const scrollRef = useRef<ScrollView>(null);
@@ -63,6 +64,7 @@ export default function ChatScreen() {
   useFocusEffect(
     useCallback(() => {
       let cancelado = false;
+      setErrorLista('');
       getMyWalks()
         .then((w) => {
           if (!cancelado) setWalks(w);
@@ -72,8 +74,12 @@ export default function ChatScreen() {
         });
       return () => {
         cancelado = true;
+        // La tab Chat no se desmonta, así que el ?walkId= de un push anterior
+        // quedaría pegado: se limpia al perder el foco (en esta ruta, no en
+        // la que pasa a estar enfocada).
+        navigation.setParams({ walkId: undefined } as never);
       };
-    }, [])
+    }, [navigation])
   );
 
   const preferidoId = walkIdParam ? Number(walkIdParam) : undefined;
@@ -85,9 +91,10 @@ export default function ChatScreen() {
   const handleSend = async () => {
     const cuerpo = texto.trim();
     if (!cuerpo) return;
-    setTexto('');
     try {
       await enviar(cuerpo);
+      // Recién acá se limpia: si el envío falla, el texto sigue en el input.
+      setTexto('');
     } catch {
       // El error ya quedó en el estado del hook (banner o "chat cerrado");
       // no hace falta romper acá.
@@ -99,7 +106,7 @@ export default function ChatScreen() {
   // ── Sin paseos cargados todavía ──
   if (walks === null) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView edges={['top']} style={styles.safe}>
         <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
         <View style={styles.centerWrap}>
           {errorLista ? (
@@ -115,7 +122,7 @@ export default function ChatScreen() {
   // ── Sin ningún paseo con chat disponible ──
   if (!walkActivo) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView edges={['top']} style={styles.safe}>
         <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
         <View style={styles.centerWrap}>
           <Ionicons name="chatbubble-outline" size={48} color={TEXT_MUTED} />
@@ -154,7 +161,7 @@ export default function ChatScreen() {
   const puedeVolver = router.canGoBack();
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
 
       {/* ── HEADER ── */}
@@ -176,8 +183,7 @@ export default function ChatScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           ref={scrollRef}
@@ -196,7 +202,7 @@ export default function ChatScreen() {
 
             <View style={{ flex: 1, marginLeft: 10 }}>
               <View style={styles.tobyNameRow}>
-                <Text style={styles.tobyName}>{perros}</Text>
+                <Text style={styles.tobyName} numberOfLines={1}>{perros}</Text>
                 <Text style={styles.tobyPaw}> 🐾</Text>
               </View>
               <Text style={styles.tobySub}>{subtituloEstado(walkActivo, cerrado)}</Text>
@@ -276,7 +282,8 @@ export default function ChatScreen() {
           </View>
         ) : (
           <View style={styles.inputBar}>
-            <TouchableOpacity hitSlop={10}>
+            {/* Próximamente: adjuntar archivos todavía no existe. */}
+            <TouchableOpacity hitSlop={10} disabled style={{ opacity: 0.4 }}>
               <Ionicons name="attach" size={22} color={TEXT_MUTED} />
             </TouchableOpacity>
 
@@ -290,7 +297,8 @@ export default function ChatScreen() {
                 multiline
                 editable={!enviando}
               />
-              <TouchableOpacity hitSlop={10}>
+              {/* Próximamente: selector de emojis. */}
+              <TouchableOpacity hitSlop={10} disabled style={{ opacity: 0.4 }}>
                 <Ionicons name="happy-outline" size={20} color={TEXT_MUTED} />
               </TouchableOpacity>
             </View>

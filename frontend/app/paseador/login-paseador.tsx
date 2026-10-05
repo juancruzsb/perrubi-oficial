@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar,
-  ScrollView, Platform, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { walkerLogin } from '../../api/walker';
 import { useSessionPaseador } from '../../context/session-paseador';
 
-const GREEN         = '#4caf50';
 const ORANGE         = '#f5a623';
 const ORANGE_LIGHT   = '#fdf1e0';
 const BLACK          = '#1a2e1a';
@@ -19,14 +26,14 @@ const TEXT_PRIMARY   = '#1a1a1a';
 const TEXT_SECONDARY = '#666666';
 const TEXT_MUTED     = '#aaaaaa';
 const BORDER         = '#e0e0e0';
-const BORDER_FOCUS   = '#4caf50';
+const BORDER_FOCUS   = '#f5a623';
 const RED            = '#ef4444';
 
 // Login real de paseadores: POST /auth/walkerLogin (api/walker.ts), sesión
 // guardada aparte de la del dueño (ver context/session-paseador.tsx).
 export default function LoginPaseadorScreen() {
   const router = useRouter();
-  const { entrar } = useSessionPaseador();
+  const { entrar, token, cargando } = useSessionPaseador();
 
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
@@ -49,7 +56,7 @@ export default function LoginPaseadorScreen() {
       setLoading(true);
       const res = await walkerLogin({ email: email.trim().toLowerCase(), password });
       await entrar(res.token, res.walker);
-      router.replace('/paseador/index');
+      router.replace('/paseador');
     } catch (err: any) {
       setError(err.message || 'No pudimos iniciar sesión. Intentá de nuevo.');
     } finally {
@@ -57,8 +64,11 @@ export default function LoginPaseadorScreen() {
     }
   };
 
+  // Ya hay una sesión de paseador guardada: no pedir las credenciales de nuevo.
+  if (!cargando && token) return <Redirect href="/paseador" />;
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       <View style={styles.header}>
@@ -67,6 +77,7 @@ export default function LoginPaseadorScreen() {
         </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -78,7 +89,7 @@ export default function LoginPaseadorScreen() {
           </View>
 
           <View style={styles.pinCircle}>
-            <Ionicons name="paw" size={30} color={GREEN} style={styles.pinPaw} />
+            <Ionicons name="paw" size={30} color={ORANGE} style={styles.pinPaw} />
           </View>
           <View style={styles.pinDot} />
 
@@ -127,7 +138,7 @@ export default function LoginPaseadorScreen() {
               onFocus={() => setPassFocus(true)}
               onBlur={() => setPassFocus(false)}
             />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+            <TouchableOpacity onPress={() => setShowPass(!showPass)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name={showPass ? 'eye-off' : 'eye'} size={18} color={TEXT_MUTED} />
             </TouchableOpacity>
           </View>
@@ -153,14 +164,14 @@ export default function LoginPaseadorScreen() {
             <View style={styles.divisorLine} />
           </View>
 
-          <TouchableOpacity style={styles.btnGoogle} activeOpacity={0.85}>
+          <TouchableOpacity style={[styles.btnGoogle, styles.btnProximamente]} activeOpacity={1} disabled>
             <Ionicons name="logo-google" size={18} color="#4285F4" />
-            <Text style={styles.btnGoogleText}>Continuar con Google</Text>
+            <Text style={styles.btnGoogleText}>Google · Próximamente</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.btnApple} activeOpacity={0.85}>
+          <TouchableOpacity style={[styles.btnApple, styles.btnProximamente]} activeOpacity={1} disabled>
             <Ionicons name="logo-apple" size={20} color={WHITE} />
-            <Text style={styles.btnAppleText}>Continuar con Apple</Text>
+            <Text style={styles.btnAppleText}>Apple · Próximamente</Text>
           </TouchableOpacity>
 
           <View style={styles.footerRow}>
@@ -171,6 +182,7 @@ export default function LoginPaseadorScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -189,19 +201,19 @@ const styles = StyleSheet.create({
 
   pinCircle: {
     width: 76, height: 76, borderRadius: 38, borderBottomRightRadius: 4,
-    borderWidth: 4, borderColor: GREEN,
+    borderWidth: 4, borderColor: ORANGE,
     alignItems: 'center', justifyContent: 'center',
     transform: [{ rotate: '45deg' }], marginBottom: 6,
   },
   pinPaw: { transform: [{ rotate: '-45deg' }] },
   pinDot: {
     width: 10, height: 10, borderRadius: 5,
-    backgroundColor: GREEN, marginBottom: 14,
+    backgroundColor: ORANGE, marginBottom: 14,
   },
 
   wordmarkRow: { flexDirection: 'row', alignItems: 'flex-start' },
   wordmark:    { fontSize: 34, fontWeight: '800', color: BLACK },
-  wordmarkDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: GREEN, marginTop: 6, marginLeft: 2 },
+  wordmarkDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ORANGE, marginTop: 6, marginLeft: 2 },
 
   tagline: {
     fontSize: 14, color: TEXT_SECONDARY, textAlign: 'center',
@@ -232,6 +244,7 @@ const styles = StyleSheet.create({
     shadowColor: ORANGE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
   btnDisabled:    { opacity: 0.7 },
+  btnProximamente: { opacity: 0.5 },
   btnEntrarText:  { fontSize: 16, fontWeight: '700', color: WHITE },
   btnArrow:       { fontSize: 18, color: WHITE, fontWeight: '700' },
 

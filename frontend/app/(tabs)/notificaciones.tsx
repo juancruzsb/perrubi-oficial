@@ -4,10 +4,11 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -62,10 +63,14 @@ export default function NotificacionesScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* ── HEADER ── */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
@@ -103,7 +108,7 @@ export default function NotificacionesScreen() {
 
           <TouchableOpacity
             style={styles.row}
-            onPress={() => router.push('/calificacion' as any)}
+            onPress={() => router.push('/poner_calificacion')}
             activeOpacity={0.7}
           >
             <View style={styles.rateIcon}>
@@ -138,7 +143,7 @@ export default function NotificacionesScreen() {
             <Ionicons name="leaf" size={18} color={LEAF_COLOR} style={styles.leafFront} />
           </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -147,7 +152,7 @@ export default function NotificacionesScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   container: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
     position: 'relative',
     overflow: 'hidden',

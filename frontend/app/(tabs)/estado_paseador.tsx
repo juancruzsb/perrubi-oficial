@@ -4,11 +4,12 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useWalkPolling } from '../../hooks/use-walk-polling';
@@ -38,7 +39,7 @@ export default function EstadoPaseadorScreen() {
   const rating = ratingNumero(walker?.averageRating);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
 
       {/* ── HEADER ── */}
@@ -67,7 +68,7 @@ export default function EstadoPaseadorScreen() {
           <Text style={styles.errorText}>Este paseo todavía no tiene paseador asignado.</Text>
         </View>
       ) : (
-        <>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
           {/* ── CARD PRINCIPAL ── */}
           <View style={styles.card}>
             <Text style={styles.cardTitulo}>Perfil del paseador</Text>
@@ -125,8 +126,7 @@ export default function EstadoPaseadorScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={{ flex: 1 }} />
-        </>
+        </ScrollView>
       )}
 
       {/* ── DECORACIÓN INFERIOR ── */}

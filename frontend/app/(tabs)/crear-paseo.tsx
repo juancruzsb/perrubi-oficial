@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,12 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
+  KeyboardAvoidingView,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from "expo-router/react-navigation";
 import { getMyDogs } from '../../api/dogs';
@@ -21,7 +22,6 @@ import type { Dog } from '../../api/types';
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN       = '#4caf50';
 const GREEN_LIGHT = '#e8f5e9';
-const GREEN_DARK  = '#2e7d32';
 const BG          = '#f5f5f5';
 const WHITE       = '#ffffff';
 const TEXT_PRIMARY   = '#1a1a1a';
@@ -46,6 +46,9 @@ export default function CrearPaseoScreen() {
   const [seleccionados, setSeleccionados] = useState<number[]>([]);
   const [enviando, setEnviando]         = useState(false);
   const [error, setError]               = useState('');
+  // Dirección ya creada para el texto actual: si createWalk falla y el usuario
+  // reintenta, se reutiliza en vez de crear otra Address duplicada.
+  const direccionCreada = useRef<{ texto: string; id: number } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -87,15 +90,25 @@ export default function CrearPaseoScreen() {
       setEnviando(true);
       // El back geocodifica el texto libre solo (addresses.controller.js),
       // así que no hace falta pasar por /maps/directions desde acá.
-      const address = await createAddress({ label: 'Zona de paseo', street: ubicacion.trim() });
+      const texto = ubicacion.trim();
+      let addressId = direccionCreada.current?.texto === texto ? direccionCreada.current.id : null;
+      if (addressId === null) {
+        const address = await createAddress({ label: 'Zona de paseo', street: texto });
+        direccionCreada.current = { texto, id: address.id };
+        addressId = address.id;
+      }
       const walk = await createWalk({
         dogIds: seleccionados,
         walkType,
         startTime: new Date().toISOString(),
         duration: parseInt(duracion, 10),
         notes: notasFinales || undefined,
-        addressId: address.id,
+        addressId,
       });
+      // La pantalla no se desmonta al salir (es un Tab oculto): se limpia el
+      // formulario para que el próximo paseo no arranque con datos viejos.
+      setDuracion(''); setUbicacion(''); setSocializa(null); setNotas('');
+      setSeleccionados([]); direccionCreada.current = null;
       router.replace({ pathname: '/buscando_paseador', params: { walkId: String(walk.id) } });
     } catch (err: any) {
       setError(
@@ -109,7 +122,7 @@ export default function CrearPaseoScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
  
       {/* ── HEADER ── */}
@@ -125,6 +138,7 @@ export default function CrearPaseoScreen() {
         <View style={styles.backBtn} />
       </View>
  
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -257,10 +271,11 @@ export default function CrearPaseoScreen() {
           </View>
  
           {/* Usar ubicación actual */}
-          <TouchableOpacity style={styles.ubicacionActualRow}>
+          {/* Próximamente: requiere expo-location del lado dueño. */}
+          <TouchableOpacity style={[styles.ubicacionActualRow, { opacity: 0.4 }]} disabled>
             {/* TODO: <Image source={require('@/assets/icons/gps.png')} style={{width:16,height:16,tintColor:GREEN}} /> */}
             <Text style={styles.ubicacionActualIcon}>✓</Text>
-            <Text style={styles.ubicacionActualText}>Usar mi ubicación actual</Text>
+            <Text style={styles.ubicacionActualText}>Usar mi ubicación actual · Próximamente</Text>
           </TouchableOpacity>
         </View>
  
@@ -362,6 +377,7 @@ export default function CrearPaseoScreen() {
           }
         </TouchableOpacity>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

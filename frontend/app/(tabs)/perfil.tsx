@@ -5,10 +5,10 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getMe, nombreCompleto } from '../../api/auth';
@@ -41,7 +41,7 @@ const menuItems: MenuItem[] = [
   { id: 'datos',       icon: 'person-outline',       label: 'Mis datos' },
   { id: 'perros',      icon: 'paw-outline',          label: 'Mis perros', destino: '/mis_perros' },
   { id: 'pagos',       icon: 'card-outline',         label: 'Métodos de pago' },
-  { id: 'direcciones', icon: 'location-outline',     label: 'Direcciones guardadas' },
+  { id: 'direcciones', icon: 'location-outline',     label: 'Direcciones guardadas', destino: '/direcciones' },
   { id: 'ayuda',       icon: 'help-circle-outline',  label: 'Ayuda y soporte' },
   { id: 'config',      icon: 'settings-outline',     label: 'Configuración' },
 ];
@@ -65,12 +65,20 @@ export default function PerfilScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!token) return;
+      // Si se cierra sesión (o se pierde el foco) con el getMe() en vuelo, la
+      // respuesta no debe volver a guardar la sesión que se acaba de cerrar.
+      let cancelado = false;
       getMe()
-        .then((res) => entrar(token, res.user))
+        .then((res) => {
+          if (!cancelado) entrar(token, res.user);
+        })
         .catch(() => {
           // Silencioso: si falla, seguimos mostrando el user que ya está en
           // el contexto de sesión — no vale la pena un banner de error acá.
         });
+      return () => {
+        cancelado = true;
+      };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token])
   );
@@ -88,8 +96,8 @@ export default function PerfilScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={GREEN} />
+    <SafeAreaView edges={['top']} style={styles.safe}>
+      <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       <ScrollView
         style={styles.scroll}

@@ -11,7 +11,7 @@ import { staticMapUrl } from '../api/maps';
 import { haceCuanto } from '../lib/paseos';
 import type { LiveLocation } from '../hooks/use-walk-location';
 
-const GREEN = '#4eb82f';
+const GREEN = '#4caf50';
 const MAP_BG = '#f1f0ef';
 const TEXT_MUTED = '#9aa39a';
 const TEXT_DARK = '#1f2937';
@@ -24,6 +24,8 @@ export function WalkMap({
   location,
   enVivo,
   conPerro,
+  fill,
+  overlayPosition = 'bottom',
 }: {
   location: LiveLocation | null;
   enVivo: boolean;
@@ -33,12 +35,18 @@ export function WalkMap({
   // "persona + perro" en Ionicons, así que se compone con el mismo motivo
   // de pata que ya usa el resto de la pantalla (chip de estado, timeline).
   conPerro: boolean;
+  // fill: el mapa llena a su contenedor (flex:1) en vez de tener 220px fijos.
+  fill?: boolean;
+  // Dónde va el cartel "En vivo / Actualizado": abajo (default) o arriba,
+  // para pantallas donde una hoja tapa la parte inferior del mapa.
+  overlayPosition?: 'top' | 'bottom';
 }) {
   const [uri, setUri] = useState<string | null>(null);
   const [errorImagen, setErrorImagen] = useState(false);
   // Fuerza un re-render cada 5s solo para que "Actualizado hace X" no se
   // quede congelado en el texto que tenía la primera vez que se pintó.
   const [, setTick] = useState(0);
+  const mapStyle = fill ? styles.mapFill : styles.map;
 
   useEffect(() => {
     if (!location) {
@@ -48,7 +56,7 @@ export function WalkMap({
     setErrorImagen(false);
     let cancelado = false;
     staticMapUrl({ latitude: location.latitude, longitude: location.longitude, updatedAt: location.updatedAt })
-      .then((url) => { if (!cancelado) setUri(url); })
+      .then((url) => { if (!cancelado) { setUri(url); if (!url) setErrorImagen(true); } })
       .catch(() => { if (!cancelado) setUri(null); });
     return () => { cancelado = true; };
   }, [location]);
@@ -61,7 +69,7 @@ export function WalkMap({
 
   if (!location) {
     return (
-      <View style={[styles.map, styles.placeholder]}>
+      <View style={[mapStyle, styles.placeholder]}>
         <Ionicons name="paw" size={28} color={TEXT_MUTED} />
         <Text style={styles.placeholderText}>Esperando la ubicación del paseador…</Text>
       </View>
@@ -70,7 +78,7 @@ export function WalkMap({
 
   if (errorImagen || !uri) {
     return (
-      <View style={[styles.map, styles.placeholder]}>
+      <View style={[mapStyle, styles.placeholder]}>
         <Ionicons name={errorImagen ? 'cloud-offline-outline' : 'location'} size={28} color={TEXT_MUTED} />
         <Text style={styles.placeholderText}>
           {errorImagen ? 'No pudimos cargar el mapa.' : 'Cargando mapa…'}
@@ -80,7 +88,7 @@ export function WalkMap({
   }
 
   return (
-    <View style={styles.map}>
+    <View style={mapStyle}>
       <Image
         source={{ uri }}
         style={StyleSheet.absoluteFill}
@@ -100,7 +108,7 @@ export function WalkMap({
           )}
         </View>
       </View>
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, overlayPosition === 'top' ? styles.overlayTop : styles.overlayBottom]}>
         {enVivo && (
           <View style={styles.liveChip}>
             <View style={styles.liveDot} />
@@ -121,6 +129,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: MAP_BG,
   },
+  mapFill: {
+    flex: 1,
+    width: '100%',
+    overflow: 'hidden',
+    backgroundColor: MAP_BG,
+  },
+  overlayTop: { top: 10 },
+  overlayBottom: { bottom: 10 },
   placeholder: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -171,7 +187,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 10,
     right: 10,
-    bottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

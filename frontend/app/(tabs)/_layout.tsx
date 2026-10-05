@@ -1,6 +1,7 @@
 import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../../context/session';
 
@@ -9,22 +10,14 @@ const TEXT_MUTED = '#999999';
 const WHITE      = '#ffffff';
 const BORDER     = '#e0e0e0';
 
-const TAB_HEIGHT = Platform.select({
-  ios:     84,
-  android: 64,
-  web:     80,
-  default: 64,
-});
-
-const TAB_PADDING_BOTTOM = Platform.select({
-  ios:     24,
-  android: 8,
-  web:     18,
-  default: 8,
-});
+// Alto del contenido de la barra, sin el inset inferior (home indicator /
+// botones de navegación de Android), que se suma en runtime con
+// useSafeAreaInsets() para que la barra nunca quede debajo del sistema.
+const TAB_CONTENT_HEIGHT = 56;
 
 export default function TabLayout() {
   const { token, cargando } = useSession();
+  const insets = useSafeAreaInsets();
 
   // Guard de sesión: (tabs)/index es la ruta "/", así que la app arranca
   // acá en frío y este es el primer lugar donde se puede chequear si hay
@@ -43,14 +36,15 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
           backgroundColor: WHITE,
           borderTopWidth: 0.5,
           borderTopColor: BORDER,
-          height: TAB_HEIGHT,
-          paddingBottom: TAB_PADDING_BOTTOM,
+          height: TAB_CONTENT_HEIGHT + insets.bottom,
+          paddingBottom: insets.bottom + 6,
           paddingTop: 8,
           elevation: 0,
           shadowOpacity: 0,
@@ -124,7 +118,7 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="calificacion"
+        name="poner_calificacion"
         options={{ href: null }}
       />
 

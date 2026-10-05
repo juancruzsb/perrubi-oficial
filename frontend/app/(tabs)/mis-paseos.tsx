@@ -5,11 +5,11 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { dogsOf, getMyWalks } from '../../api/walks';
@@ -65,7 +65,7 @@ export default function MisPaseosScreen() {
     }, [cargar])
   );
 
-  const cargando = walks === null;
+  const cargando = walks === null && !error;
 
   const walksFiltrados = (walks ?? []).filter((w) => {
     if (filtro === 'Todas') return true;
@@ -76,7 +76,7 @@ export default function MisPaseosScreen() {
   const tienePaseos = walksFiltrados.length > 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       <ScrollView
@@ -111,16 +111,16 @@ export default function MisPaseosScreen() {
           </View>
 
           {error ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
+            <TouchableOpacity style={styles.errorBanner} activeOpacity={0.7} onPress={() => cargar()}>
+              <Text style={styles.errorText}>{error}{walks === null ? ' Tocá para reintentar.' : ''}</Text>
+            </TouchableOpacity>
           ) : null}
 
           {cargando ? (
             <View style={styles.cargandoWrap}>
               <ActivityIndicator color={GREEN} />
             </View>
-          ) : tienePaseos ? (
+          ) : error && walks === null ? null : tienePaseos ? (
             grupos.map((g) => (
               <View key={g.fecha}>
                 <Text style={styles.sectionLabel}>{g.fecha}</Text>

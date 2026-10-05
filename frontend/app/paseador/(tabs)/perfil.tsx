@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSessionPaseador } from '../../../context/session-paseador';
 
@@ -14,19 +14,19 @@ const TEXT_MUTED   = '#888888';
 const BORDER       = '#e0e0e0';
 
 export default function PerfilPaseadorScreen() {
-  const router = useRouter();
   const { walker, salir } = useSessionPaseador();
 
   const nombre = [walker?.firstName, walker?.lastName].filter(Boolean).join(' ') || 'Paseador';
   const rating = walker?.averageRating ? Number(walker.averageRating).toFixed(1) : 'Sin calificaciones';
 
+  // Al limpiar la sesión, el guard de (tabs)/_layout.tsx redirige solo al
+  // login: navegar además a mano disparaba dos redirecciones.
   const handleLogout = async () => {
     await salir();
-    router.replace('/paseador/login-paseador');
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>

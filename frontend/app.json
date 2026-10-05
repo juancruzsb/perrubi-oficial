@@ -38,6 +38,12 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Perrubi usa tu ubicación para que el dueño vea en el mapa dónde está el paseo."
+        }
       ]
     ],
     "experiments": {

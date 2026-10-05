@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar,
-  ScrollView, Platform, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { splitNombre } from '../../api/auth';
 import { walkerRegister, walkerLogin } from '../../api/walker';
 import { useSessionPaseador } from '../../context/session-paseador';
@@ -31,11 +40,15 @@ export default function RegistroPaseadorScreen() {
   const [confirmar,setConfirmar]= useState('');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
+  const [foco,     setFoco]     = useState('');
+  // Si el alta salió bien pero el login automático falló, un reintento no
+  // debe volver a registrar (el back respondería 409 'ya existe').
+  const registrado = useRef(false);
 
   const handleRegistrar = async () => {
     setError('');
 
-    if (!nombre || !email || !password || !confirmar) {
+    if (!nombre.trim() || !email.trim() || !password || !confirmar) {
       setError('Por favor completá todos los campos.');
       return;
     }
@@ -51,10 +64,13 @@ export default function RegistroPaseadorScreen() {
     try {
       setLoading(true);
       const emailNormalizado = email.trim().toLowerCase();
-      await walkerRegister({ ...splitNombre(nombre), email: emailNormalizado, password });
+      if (!registrado.current) {
+        await walkerRegister({ ...splitNombre(nombre.trim()), email: emailNormalizado, password });
+        registrado.current = true;
+      }
       const res = await walkerLogin({ email: emailNormalizado, password });
       await entrar(res.token, res.walker);
-      router.replace('/paseador/index');
+      router.replace('/paseador');
     } catch (err: any) {
       setError(err.message || 'Error al registrarte. Intentá de nuevo.');
     } finally {
@@ -63,15 +79,16 @@ export default function RegistroPaseadorScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backArrow}>←</Text>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="arrow-back" size={22} color={TEXT_PRIMARY} />
         </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -93,10 +110,12 @@ export default function RegistroPaseadorScreen() {
           ) : null}
 
           <Text style={styles.label}>Nombre completo</Text>
-          <View style={styles.inputWrap}>
+          <View style={[styles.inputWrap, foco === 'nombre' && styles.inputWrapFocus]}>
             <TextInput
               style={styles.textInput}
               placeholder="Tu nombre y apellido"
+              onFocus={() => setFoco('nombre')}
+              onBlur={() => setFoco('')}
               placeholderTextColor={TEXT_MUTED}
               autoCapitalize="words"
               value={nombre}
@@ -105,10 +124,12 @@ export default function RegistroPaseadorScreen() {
           </View>
 
           <Text style={styles.label}>Email</Text>
-          <View style={styles.inputWrap}>
+          <View style={[styles.inputWrap, foco === 'email' && styles.inputWrapFocus]}>
             <TextInput
               style={styles.textInput}
               placeholder="ejemplo@email.com"
+              onFocus={() => setFoco('email')}
+              onBlur={() => setFoco('')}
               placeholderTextColor={TEXT_MUTED}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -118,10 +139,12 @@ export default function RegistroPaseadorScreen() {
           </View>
 
           <Text style={styles.label}>Contraseña</Text>
-          <View style={styles.inputWrap}>
+          <View style={[styles.inputWrap, foco === 'password' && styles.inputWrapFocus]}>
             <TextInput
               style={styles.textInput}
               placeholder="Mínimo 8 caracteres"
+              onFocus={() => setFoco('password')}
+              onBlur={() => setFoco('')}
               placeholderTextColor={TEXT_MUTED}
               secureTextEntry
               value={password}
@@ -130,10 +153,12 @@ export default function RegistroPaseadorScreen() {
           </View>
 
           <Text style={styles.label}>Confirmar contraseña</Text>
-          <View style={styles.inputWrap}>
+          <View style={[styles.inputWrap, foco === 'confirmar' && styles.inputWrapFocus]}>
             <TextInput
               style={styles.textInput}
               placeholder="Repetí tu contraseña"
+              onFocus={() => setFoco('confirmar')}
+              onBlur={() => setFoco('')}
               placeholderTextColor={TEXT_MUTED}
               secureTextEntry
               value={confirmar}
@@ -167,6 +192,7 @@ export default function RegistroPaseadorScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -174,7 +200,6 @@ export default function RegistroPaseadorScreen() {
 const styles = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: BG },
   header: { paddingHorizontal: 20, paddingVertical: 12 },
-  backArrow: { fontSize: 22, color: TEXT_PRIMARY },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
 
   logoSection: { marginBottom: 24 },
@@ -195,6 +220,7 @@ const styles = StyleSheet.create({
     backgroundColor: WHITE, borderWidth: 1.5, borderColor: BORDER, borderRadius: 12,
     paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 14 : 10,
   },
+  inputWrapFocus: { borderColor: BORDER_FOCUS },
   textInput:  { flex: 1, fontSize: 14, color: TEXT_PRIMARY },
 
   btnRegistrar: {

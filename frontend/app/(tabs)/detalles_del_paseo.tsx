@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useWalkPolling } from '../../hooks/use-walk-polling';
@@ -62,10 +63,14 @@ export default function DetalleDelPaseoScreen() {
   const precio = walk?.price != null ? Number(walk.price) : null;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* ── CARD ── */}
         <View style={styles.card}>
           {/* Header */}
@@ -159,7 +164,7 @@ export default function DetalleDelPaseoScreen() {
                 </View>
               </View>
 
-              {precio != null && (
+              {precio != null && Number.isFinite(precio) && walk?.status === 'finished' && (
                 <>
                   <View style={styles.divider} />
                   <View style={[styles.infoRow, { marginBottom: 0 }]}>
@@ -192,7 +197,7 @@ export default function DetalleDelPaseoScreen() {
             <Ionicons name="leaf" size={18} color={LEAF_COLOR} style={styles.leafFront} />
           </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -201,7 +206,7 @@ export default function DetalleDelPaseoScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   container: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 8,
     position: 'relative',

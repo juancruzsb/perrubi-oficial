@@ -5,11 +5,11 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from "expo-router/react-navigation";
 import { getMyDogs } from '../../api/dogs';
@@ -207,7 +207,7 @@ function SeccionPerrosVacia({ onAgregar }: { onAgregar: () => void }) {
         <Text style={styles.emptySubtitle}>Agregá a tu compañero para empezar a planificar sus paseos.</Text>
         <TouchableOpacity style={styles.agregarPerroBtn} onPress={onAgregar}>
           <Text style={styles.agregarPerroIcon}>⊕</Text>
-          <Text style={styles.agregarPerroBtnText}>Agregar otro perro</Text>
+          <Text style={styles.agregarPerroBtnText}>Agregar perro</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -261,7 +261,7 @@ function SeccionPaseosVacio({ onVerTodos }: { onVerTodos: () => void }) {
       </View>
       <View style={[styles.card, styles.paseoVacioWrap]}>
         <Text style={{ fontSize: 28, marginRight: 12 }}>📅</Text>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.emptyTitle}>Aún no tenés paseos</Text>
           <Text style={styles.emptySubtitle}>Cuando reserves un paseo, lo verás aquí.</Text>
         </View>
@@ -331,7 +331,7 @@ export default function HomeScreen() {
   const perros = dogs?.map((d) => dogAPerro(d, walks ?? [])) ?? [];
   const paseos = (walks ?? []).slice(0, 3).map(walkAPaseo);
 
-  const cargando = dogs === null && walks === null;
+  const cargando = dogs === null && walks === null && !error;
   const tienePerros = perros.length > 0;
   const tienePaseos = paseos.length > 0;
 
@@ -360,7 +360,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
       <Header tieneNotif={false} onAvatar={handleAvatar} />
       {cargando ? (
@@ -378,9 +378,11 @@ export default function HomeScreen() {
         >
           <HeroBanner nombre={user?.firstName ?? 'usuario'} />
           {error ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
+            <TouchableOpacity style={styles.errorBanner} activeOpacity={0.7} onPress={() => cargar()}>
+              <Text style={styles.errorText}>
+                {error}{dogs === null ? ' Tocá para reintentar.' : ''}
+              </Text>
+            </TouchableOpacity>
           ) : null}
           <SeccionServicios onServicio={handleServicio} />
           {tienePerros ? <SeccionPerrosConDatos perros={perros} onAgregar={handleAgregarPerro} onVerPerros={handleVerPerros} /> : <SeccionPerrosVacia onAgregar={handleAgregarPerro} />}

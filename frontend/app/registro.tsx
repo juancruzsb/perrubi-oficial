@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar,
-  ScrollView, Platform, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { register, login, splitNombre } from '../api/auth';
 import { useSession } from '../context/session';
 
@@ -30,6 +39,9 @@ export default function RegistroScreen() {
   const [showConf, setShowConf] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
+  // Si el alta salió bien pero el login automático falló, un reintento no
+  // debe volver a registrar (el back respondería 409 'ya existe').
+  const registrado = useRef(false);
 
   const [nombreFocus,  setNombreFocus]  = useState(false);
   const [emailFocus,   setEmailFocus]   = useState(false);
@@ -39,7 +51,7 @@ export default function RegistroScreen() {
   const handleRegistrar = async () => {
     setError('');
 
-    if (!nombre || !email || !password || !confirmar) {
+    if (!nombre.trim() || !email.trim() || !password || !confirmar) {
       setError('Por favor completá todos los campos.');
       return;
     }
@@ -56,7 +68,10 @@ export default function RegistroScreen() {
       setLoading(true);
       const emailNormalizado = email.trim().toLowerCase();
       // 1. Registra el usuario (el back exige firstName, no "name")
-      await register({ ...splitNombre(nombre), email: emailNormalizado, password });
+      if (!registrado.current) {
+        await register({ ...splitNombre(nombre.trim()), email: emailNormalizado, password });
+        registrado.current = true;
+      }
       // 2. Hace login automático (el register no devuelve token)
       const res = await login({ email: emailNormalizado, password });
       await entrar(res.token, res.user);
@@ -70,15 +85,16 @@ export default function RegistroScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backArrow}>←</Text>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="arrow-back" size={22} color={TEXT_PRIMARY} />
         </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -145,7 +161,7 @@ export default function RegistroScreen() {
               onFocus={() => setPassFocus(true)}
               onBlur={() => setPassFocus(false)}
             />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+            <TouchableOpacity onPress={() => setShowPass(!showPass)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Text style={styles.inputIcon}>{showPass ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
           </View>
@@ -163,7 +179,7 @@ export default function RegistroScreen() {
               onFocus={() => setConfirmFocus(true)}
               onBlur={() => setConfirmFocus(false)}
             />
-            <TouchableOpacity onPress={() => setShowConf(!showConf)}>
+            <TouchableOpacity onPress={() => setShowConf(!showConf)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Text style={styles.inputIcon}>{showConf ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
           </View>
@@ -194,10 +210,10 @@ export default function RegistroScreen() {
             onPress={() => router.replace('/login-form')}
           >
             <Text style={styles.btnIniciarText}>Iniciar sesión</Text>
-            <Text style={styles.btnIniciarIcon}>→|</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -205,7 +221,6 @@ export default function RegistroScreen() {
 const styles = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: BG },
   header: { paddingHorizontal: 20, paddingVertical: 12 },
-  backArrow: { fontSize: 22, color: TEXT_PRIMARY },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
 
   logoSection: { alignItems: 'center', marginBottom: 28 },
@@ -238,7 +253,7 @@ const styles = StyleSheet.create({
 
   btnRegistrar: {
     backgroundColor: GREEN, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 20,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     marginTop: 24,
     shadowColor: GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 4,
   },

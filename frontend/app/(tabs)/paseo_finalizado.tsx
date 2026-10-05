@@ -4,18 +4,18 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { dogsOf } from '../../api/walks';
 import { useWalkPolling } from '../../hooks/use-walk-polling';
 
 // ─── COLORES ────────────────────────────────────────────────
-const GREEN          = '#4eb82f';
+const GREEN          = '#4caf50';
 const GREEN_DARK      = '#1b5e20';
 const GREEN_LIGHT     = '#eaf7eb';
 const SCREEN_BG       = '#f5f7f6';
@@ -44,8 +44,15 @@ export default function PaseoFinalizadoScreen() {
 
   if (cargando || !walk) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView edges={['top']} style={styles.safe}>
         <StatusBar barStyle="dark-content" backgroundColor={SCREEN_BG} />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
+            <Ionicons name="arrow-back" size={24} color={TEXT_DARK} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Paseo Finalizado</Text>
+          <View style={{ width: 24 }} />
+        </View>
         <View style={styles.centerWrap}>
           {error ? <Text style={styles.errorText}>{error}</Text> : <ActivityIndicator color={GREEN} />}
         </View>
@@ -56,7 +63,7 @@ export default function PaseoFinalizadoScreen() {
   const nombresPerros = dogsOf(walk).map((d) => d.name);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={SCREEN_BG} />
 
       {/* ── HEADER ── */}

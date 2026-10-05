@@ -5,17 +5,17 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   Platform,
+  KeyboardAvoidingView,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { createDog } from '../../api/dogs';
 
 const GREEN        = '#4caf50';
-const GREEN_LIGHT  = '#e8f5e9';
 const BLUE         = '#3b5bdb';
 const PINK         = '#e64980';
 const WHITE        = '#ffffff';
@@ -81,6 +81,9 @@ export default function AgregarPerroScreen() {
         weight: pesoNum,
         extraNotes: notas.trim() || undefined,
       });
+      // La pantalla no se desmonta al salir (es un Tab oculto): se limpia el
+      // formulario para que la próxima vez no abra con el perro anterior.
+      setNombre(''); setRaza(''); setEdad(''); setPeso(''); setGenero(null); setNotas('');
       router.back();
     } catch (err: any) {
       setError(err.message || 'No pudimos guardar la mascota. Intentá de nuevo.');
@@ -90,7 +93,7 @@ export default function AgregarPerroScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       {/* ── HEADER ── */}
@@ -105,6 +108,7 @@ export default function AgregarPerroScreen() {
         <View style={{ width: 24 }} />
       </View>
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -122,7 +126,8 @@ export default function AgregarPerroScreen() {
             <View style={styles.fotoCirculo}>
               <Text style={styles.fotoEmoji}>🐕</Text>
             </View>
-            <TouchableOpacity style={styles.camaraBtn}>
+            {/* Próximamente: subir foto (no hay expo-image-picker ni endpoint de upload). */}
+            <TouchableOpacity style={[styles.camaraBtn, { opacity: 0.4 }]} disabled>
               {/* TODO: <Image source={require('@/assets/icons/camara.png')} style={{width:16,height:16,tintColor:'#fff'}} /> */}
               <Text style={styles.camaraEmoji}>📷</Text>
             </TouchableOpacity>
@@ -265,6 +270,7 @@ export default function AgregarPerroScreen() {
           }
         </TouchableOpacity>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

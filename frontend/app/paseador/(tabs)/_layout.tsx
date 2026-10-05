@@ -3,6 +3,7 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSessionPaseador } from '../../../context/session-paseador';
+import { UbicacionPaseadorProvider } from '../../../context/ubicacion-paseador';
 
 const ORANGE     = '#f5a623';
 const TEXT_MUTED = '#999999';
@@ -26,7 +27,9 @@ export default function PaseadorTabsLayout() {
   }
 
   return (
+    <UbicacionPaseadorProvider>
     <Tabs
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarStyle: { backgroundColor: WHITE, borderTopWidth: 0.5, borderTopColor: BORDER },
@@ -57,6 +60,7 @@ export default function PaseadorTabsLayout() {
       />
       <Tabs.Screen name="paseo/[id]" options={{ href: null }} />
     </Tabs>
+    </UbicacionPaseadorProvider>
   );
 }
 

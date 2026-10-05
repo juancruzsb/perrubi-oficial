@@ -6,11 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyDogs } from '../../api/dogs';
@@ -65,11 +65,11 @@ export default function MisPerrosScreen() {
     }, [cargar])
   );
 
-  const cargando = perros === null;
+  const cargando = perros === null && !error;
   const tienePerros = (perros?.length ?? 0) > 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       <ScrollView
@@ -92,16 +92,16 @@ export default function MisPerrosScreen() {
           <Text style={styles.title}>Mis perros</Text>
 
           {error ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
+            <TouchableOpacity style={styles.errorBanner} activeOpacity={0.7} onPress={() => cargar()}>
+              <Text style={styles.errorText}>{error}{perros === null ? ' Tocá para reintentar.' : ''}</Text>
+            </TouchableOpacity>
           ) : null}
 
           {cargando ? (
             <View style={styles.cargandoWrap}>
               <ActivityIndicator color={GREEN} />
             </View>
-          ) : tienePerros ? (
+          ) : error && perros === null ? null : tienePerros ? (
             <View style={styles.list}>
               {perros!.map((perro) => (
                 <View key={perro.id} style={styles.dogCard}>

@@ -5,10 +5,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
+  ScrollView,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -16,7 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 const GREEN         = '#4caf50';
 const GREEN_DARK     = '#1b5e20';
 const GREEN_LIGHT    = '#eaf7eb';
-const GREEN_BORDER   = '#e3ede3';
 const BORDER         = '#e6e9e6';
 const BG             = '#fbfdfb';
 const WHITE          = '#ffffff';
@@ -57,10 +58,15 @@ export default function CalificacionScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
-      <View style={styles.container}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* ── HEADER ── */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
@@ -119,7 +125,8 @@ export default function CalificacionScreen() {
             <Ionicons name="leaf" size={18} color={LEAF_COLOR} style={styles.leafFront} />
           </View>
         </View>
-      </View>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -128,7 +135,7 @@ export default function CalificacionScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   container: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
     position: 'relative',
     overflow: 'hidden',

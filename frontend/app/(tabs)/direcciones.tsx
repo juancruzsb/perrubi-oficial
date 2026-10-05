@@ -7,11 +7,12 @@ import {
   ScrollView,
   Modal,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
+  KeyboardAvoidingView,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,7 +42,9 @@ function formatearDireccion(a: Address): string {
   return [a.street, a.number].filter(Boolean).join(' ') + (a.city ? `, ${a.city}` : '');
 }
 
-type Editando = { label: string; id: number | null; texto: string };
+// esNueva: viene de "Agregar dirección" (el nombre se escribe en el modal); no
+// se deduce de label vacío porque al tipear la primera letra dejaría de ser vacío.
+type Editando = { label: string; id: number | null; texto: string; esNueva: boolean };
 
 export default function DireccionesScreen() {
   const router = useRouter();
@@ -54,6 +57,7 @@ export default function DireccionesScreen() {
   const [modalError, setModalError] = useState('');
 
   const cargar = useCallback(() => {
+    setError('');
     getMyAddresses()
       .then(setDirecciones)
       .catch((err: any) => setError(err.message || 'No pudimos cargar tus direcciones.'));
@@ -76,7 +80,15 @@ export default function DireccionesScreen() {
       label,
       id: existente?.id ?? null,
       texto: existente ? formatearDireccion(existente) : '',
+      esNueva: false,
     });
+  };
+
+  // Las extras se editan por id, no por label: dos con el mismo nombre (o una
+  // sin nombre) hacían que se abriera/creara la equivocada.
+  const abrirEdicionDe = (a: Address) => {
+    setModalError('');
+    setEditando({ label: a.label ?? '', id: a.id, texto: formatearDireccion(a), esNueva: false });
   };
 
   const guardarEdicion = async () => {
@@ -90,10 +102,11 @@ export default function DireccionesScreen() {
     try {
       setGuardando(true);
       setModalError('');
+      const label = editando.label.trim() || 'Dirección';
       if (editando.id) {
-        await updateAddress(editando.id, { label: editando.label, street: texto });
+        await updateAddress(editando.id, { label, street: texto });
       } else {
-        await createAddress({ label: editando.label, street: texto });
+        await createAddress({ label, street: texto });
       }
       setEditando(null);
       cargar();
@@ -118,7 +131,7 @@ export default function DireccionesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
 
       {/* ── HEADER ── */}
@@ -181,7 +194,7 @@ export default function DireccionesScreen() {
                 <TouchableOpacity
                   style={styles.rowInfo}
                   activeOpacity={0.7}
-                  onPress={() => abrirEdicion(a.label || 'Dirección')}
+                  onPress={() => abrirEdicionDe(a)}
                 >
                   <Text style={styles.rowLabel}>{a.label || 'Dirección'}</Text>
                   <Text style={styles.rowValue} numberOfLines={1}>
@@ -203,7 +216,7 @@ export default function DireccionesScreen() {
           style={styles.agregarBtn}
           activeOpacity={0.7}
           onPress={() =>
-            setEditando({ label: '', id: null, texto: '' })
+            setEditando({ label: '', id: null, texto: '', esNueva: true })
           }
         >
           <Ionicons name="add-circle-outline" size={20} color={GREEN} />
@@ -218,10 +231,13 @@ export default function DireccionesScreen() {
         animationType="fade"
         onRequestClose={() => setEditando(null)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>
-              {editando?.id ? `Editar ${editando.label}` : editando?.label ? `Agregar ${editando.label}` : 'Nueva dirección'}
+              {editando?.id ? `Editar ${editando.label || 'dirección'}` : editando?.esNueva ? 'Nueva dirección' : `Agregar ${editando?.label ?? ''}`}
             </Text>
 
             {modalError ? (
@@ -230,7 +246,7 @@ export default function DireccionesScreen() {
               </View>
             ) : null}
 
-            {!editando?.label && (
+            {editando?.esNueva && (
               <>
                 <Text style={styles.modalLabel}>Nombre</Text>
                 <View style={styles.inputWrap}>
@@ -278,7 +294,7 @@ export default function DireccionesScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

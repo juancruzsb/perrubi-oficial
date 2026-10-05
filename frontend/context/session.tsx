@@ -27,11 +27,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let activo = true;
     (async () => {
-      const [t, u] = await Promise.all([obtenerToken(), obtenerUsuario()]);
-      if (!activo) return;
-      setToken(t);
-      setUser(u);
-      setCargando(false);
+      try {
+        const [t, u] = await Promise.all([obtenerToken(), obtenerUsuario()]);
+        if (!activo) return;
+        setToken(t);
+        setUser(u);
+      } catch {
+        // Storage ilegible o JSON corrupto: se arranca sin sesión.
+      } finally {
+        if (activo) setCargando(false);
+      }
     })();
     return () => {
       activo = false;

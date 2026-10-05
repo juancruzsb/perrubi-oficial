@@ -1,11 +1,10 @@
 // context/session-paseador.tsx
 // Igual patrón que context/session.tsx pero para la sesión de Walker.
-// No se engancha a setUnauthorizedHandler de api/client.ts a propósito:
-// ese handler es único y ya lo usa la sesión de dueño (context/session.tsx)
-// para el guard de (tabs)/_layout.tsx. Si el token del paseador expira
-// (1h), las pantallas de paseador/ ven el error de la request fallida y
-// el usuario cierra sesión a mano desde perfil — suficiente para una demo.
+// Usa su propio handler de 401 (setWalkerUnauthorizedHandler) separado del
+// del dueño: así un token de paseador vencido (1h) cierra solo la sesión de
+// paseador y el guard de paseador/(tabs)/_layout.tsx redirige al login.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { setWalkerUnauthorizedHandler } from '../api/client';
 import { cerrarSesionPaseador, guardarSesionPaseador, obtenerTokenPaseador, obtenerWalker } from '../api/session-paseador';
 import type { Walker } from '../api/types';
 
@@ -27,15 +26,29 @@ export function SessionPaseadorProvider({ children }: { children: React.ReactNod
   useEffect(() => {
     let activo = true;
     (async () => {
-      const [t, w] = await Promise.all([obtenerTokenPaseador(), obtenerWalker()]);
-      if (!activo) return;
-      setToken(t);
-      setWalker(w);
-      setCargando(false);
+      try {
+        const [t, w] = await Promise.all([obtenerTokenPaseador(), obtenerWalker()]);
+        if (!activo) return;
+        setToken(t);
+        setWalker(w);
+      } catch {
+        // Storage ilegible o JSON corrupto: se arranca sin sesión.
+      } finally {
+        if (activo) setCargando(false);
+      }
     })();
     return () => {
       activo = false;
     };
+  }, []);
+
+  // apiRequest ya llamó a cerrarSesionPaseador(); acá se sincroniza el estado.
+  useEffect(() => {
+    setWalkerUnauthorizedHandler(() => {
+      setToken(null);
+      setWalker(null);
+    });
+    return () => setWalkerUnauthorizedHandler(null);
   }, []);
 
   const entrar = useCallback(async (nuevoToken: string, nuevoWalker: Walker) => {

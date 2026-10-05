@@ -1,9 +1,15 @@
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, FlatList,
-  StyleSheet, SafeAreaView, StatusBar,
-  ActivityIndicator, RefreshControl, Alert,
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { getAvailableWalks, acceptWalk } from '../../../api/walker';
 import { dogsOf } from '../../../api/walks';
@@ -22,6 +28,9 @@ export default function DisponiblesScreen() {
   const [error, setError] = useState('');
   const [refrescando, setRefrescando] = useState(false);
   const [aceptandoId, setAceptandoId] = useState<number | null>(null);
+  // Resultado de aceptar un paseo. No usa Alert: en web Alert.alert no hace
+  // nada, y cargar() limpia `error`, así que va en su propio estado.
+  const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
 
   const cargar = useCallback(async (esRefresh = false) => {
     try {
@@ -44,30 +53,37 @@ export default function DisponiblesScreen() {
 
   const handleAceptar = async (walkId: number) => {
     try {
+      setAviso(null);
       setAceptandoId(walkId);
       await acceptWalk(walkId);
-      Alert.alert('¡Listo!', 'Aceptaste el paseo. Lo vas a ver en "Mis paseos".');
+      setAviso({ ok: true, texto: '¡Listo! Aceptaste el paseo. Lo vas a ver en "Mis paseos".' });
       await cargar();
     } catch (err: any) {
-      Alert.alert('No se pudo aceptar', err.message || 'Puede que otro paseador ya lo haya tomado.');
+      setAviso({ ok: false, texto: err.message || 'No se pudo aceptar: puede que otro paseador ya lo haya tomado.' });
       await cargar();
     } finally {
       setAceptandoId(null);
     }
   };
 
-  const cargando = walks === null;
+  const cargando = walks === null && !error;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Paseos disponibles</Text>
       </View>
 
       {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.errorBanner} activeOpacity={0.7} onPress={() => cargar()}>
+          <Text style={styles.errorText}>{error}{walks === null ? ' Tocá para reintentar.' : ''}</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {aviso ? (
+        <View style={aviso.ok ? styles.avisoOk : styles.errorBanner}>
+          <Text style={aviso.ok ? styles.avisoOkText : styles.errorText}>{aviso.texto}</Text>
         </View>
       ) : null}
 
@@ -77,29 +93,32 @@ export default function DisponiblesScreen() {
         </View>
       ) : (
         <FlatList
-          data={walks}
+          data={walks ?? []}
           keyExtractor={(w) => String(w.id)}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={refrescando} onRefresh={() => cargar(true)} colors={[ORANGE]} />
           }
           ListEmptyComponent={
-            <Text style={styles.empty}>No hay paseos disponibles por ahora. Deslizá para actualizar.</Text>
+            <Text style={styles.empty}>
+              {error ? 'Deslizá para volver a intentar.' : 'No hay paseos disponibles por ahora. Deslizá para actualizar.'}
+            </Text>
           }
           renderItem={({ item }) => {
             const perros = dogsOf(item).map((d) => d.name).join(', ') || 'Sin perros cargados';
             const lugar = item.address?.street ?? item.address?.label ?? 'Sin dirección';
             const duracion = item.duration != null ? `${item.duration} min` : 'Duración sin definir';
             const aceptando = aceptandoId === item.id;
+            const bloqueado = aceptandoId !== null;
             return (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>{perros}</Text>
                 <Text style={styles.cardSub}>{duracion} · {lugar}</Text>
                 {item.notes ? <Text style={styles.cardNotes}>{item.notes}</Text> : null}
                 <TouchableOpacity
-                  style={[styles.btn, aceptando && styles.btnDisabled]}
+                  style={[styles.btn, bloqueado && styles.btnDisabled]}
                   onPress={() => handleAceptar(item.id)}
-                  disabled={aceptando}
+                  disabled={bloqueado}
                   activeOpacity={0.85}
                 >
                   {aceptando
@@ -122,6 +141,8 @@ const styles = StyleSheet.create({
 
   errorBanner: { margin: 16, padding: 12, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 10 },
   errorText: { fontSize: 13, color: RED, textAlign: 'center' },
+  avisoOk: { margin: 16, padding: 12, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', borderRadius: 10 },
+  avisoOkText: { fontSize: 13, color: '#166534', textAlign: 'center' },
 
   cargandoWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { padding: 16, gap: 12, flexGrow: 1 },

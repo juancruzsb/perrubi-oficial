@@ -2,6 +2,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { cerrarSesion, obtenerToken } from './session';
+import { cerrarSesionPaseador } from './session-paseador';
 
 const DEFAULT_PORT = 3000;
 
@@ -49,18 +50,28 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
   onUnauthorized = handler;
 }
 
+// Ídem para la sesión de paseador (SessionPaseadorProvider): un 401 de una
+// request hecha con el token del paseador desloguea al paseador, no al dueño.
+let onWalkerUnauthorized: UnauthorizedHandler | null = null;
+export function setWalkerUnauthorizedHandler(handler: UnauthorizedHandler | null) {
+  onWalkerUnauthorized = handler;
+}
+
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   body?: object;
   token?: string; // override manual, poco común
   auth?: boolean; // default true; false para login/registro (todavía no hay token)
+  // A qué sesión pertenece el token de esta request, para saber cuál cerrar
+  // ante un 401. Default 'user' (dueño).
+  session?: 'user' | 'walker';
 };
 
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { method = 'GET', body, auth = true } = options;
+  const { method = 'GET', body, auth = true, session = 'user' } = options;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -94,9 +105,20 @@ export async function apiRequest<T>(
   }
 
   if (response.status === 401) {
-    await cerrarSesion();
-    onUnauthorized?.();
-    throw new ApiError(401, data?.error ?? 'Tu sesión expiró. Iniciá sesión de nuevo.');
+    // Solo se cierra una sesión si la request llevaba su token: un 401 de
+    // login ("Credenciales inválidas") o de una request sin token no significa
+    // que la sesión guardada haya expirado.
+    if (token) {
+      if (session === 'walker') {
+        await cerrarSesionPaseador();
+        onWalkerUnauthorized?.();
+      } else {
+        await cerrarSesion();
+        onUnauthorized?.();
+      }
+      throw new ApiError(401, 'Tu sesión expiró. Iniciá sesión de nuevo.');
+    }
+    throw new ApiError(401, data?.error ?? 'No autorizado.');
   }
 
   if (!response.ok) {

@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
+  ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { changeWalkStatus, getWalk } from '../../api/walks';
 import type { Walk } from '../../api/types';
@@ -17,7 +18,6 @@ import type { Walk } from '../../api/types';
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN        = '#4caf50';
 const GREEN_DARK    = '#1b5e20';
-const GREEN_TITLE   = '#57b85a';
 const GREEN_LIGHT   = '#eaf7eb';
 const GREEN_BORDER  = '#cdeacd';
 const CIRCLE_OUTER  = '#cdeccd';
@@ -41,11 +41,18 @@ export default function BuscandoPaseadorScreen() {
   const [error, setError] = useState('');
   const [cancelando, setCancelando] = useState(false);
 
-  useEffect(() => {
+  // useFocusEffect, no useEffect: (tabs) es un navegador de Tabs que no
+  // desmonta la pantalla al salir, solo la esconde. Con useEffect el polling
+  // seguía vivo en segundo plano y, al aceptarse el paseo, te sacaba de
+  // cualquier otra pantalla en la que estuvieras.
+  useFocusEffect(useCallback(() => {
     if (!walkId || Number.isNaN(id)) {
       setError('No encontramos el paseo. Volvé a intentarlo desde Inicio.');
       return;
     }
+
+    // Si cambió el paseo, no mostrar el estado del anterior.
+    setWalk((prev) => (prev && prev.id !== id ? null : prev));
 
     let cancelado = false;
     let timer: ReturnType<typeof setTimeout>;
@@ -80,7 +87,7 @@ export default function BuscandoPaseadorScreen() {
       cancelado = true;
       clearTimeout(timer);
     };
-  }, [walkId, id, router]);
+  }, [walkId, id, router]));
 
   const encontrado = walk?.status === 'accepted' || walk?.status === 'in_progress';
 
@@ -103,10 +110,14 @@ export default function BuscandoPaseadorScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         {/* ── ÍCONO CENTRAL ── */}
         <View style={styles.iconOuter}>
           <View style={styles.iconMiddle}>
@@ -172,13 +183,26 @@ export default function BuscandoPaseadorScreen() {
           </View>
         </View>
 
-        <View style={{ flex: 1 }} />
+        <View style={{ flex: 1, minHeight: 24 }} />
+
+        {/* ── DECORACIÓN INFERIOR ── */}
+        <View style={styles.decorRow} pointerEvents="none">
+          <View style={styles.leafClusterLeft}>
+            <Ionicons name="leaf" size={26} color={LEAF_COLOR_DARK} style={styles.leafBack} />
+            <Ionicons name="leaf" size={18} color={LEAF_COLOR} style={styles.leafFront} />
+          </View>
+          <View style={styles.leafClusterRight}>
+            <Ionicons name="leaf" size={26} color={LEAF_COLOR_DARK} style={styles.leafBack} />
+            <Ionicons name="leaf" size={18} color={LEAF_COLOR} style={styles.leafFront} />
+          </View>
+        </View>
+        <View style={styles.bottomWave} pointerEvents="none" />
 
         {/* ── BOTÓN CANCELAR / VER PASEOS ── */}
         {encontrado ? (
           <TouchableOpacity
             style={styles.cancelBtn}
-            onPress={() => router.replace('/(tabs)')}
+            onPress={() => router.replace('/mis-paseos')}
             activeOpacity={0.85}
           >
             <Text style={styles.cancelBtnText}>Ver mis paseos</Text>
@@ -197,19 +221,7 @@ export default function BuscandoPaseadorScreen() {
           </TouchableOpacity>
         )}
 
-        {/* ── DECORACIÓN INFERIOR ── */}
-        <View style={styles.decorRow} pointerEvents="none">
-          <View style={styles.leafClusterLeft}>
-            <Ionicons name="leaf" size={26} color={LEAF_COLOR_DARK} style={styles.leafBack} />
-            <Ionicons name="leaf" size={18} color={LEAF_COLOR} style={styles.leafFront} />
-          </View>
-          <View style={styles.leafClusterRight}>
-            <Ionicons name="leaf" size={26} color={LEAF_COLOR_DARK} style={styles.leafBack} />
-            <Ionicons name="leaf" size={18} color={LEAF_COLOR} style={styles.leafFront} />
-          </View>
-        </View>
-        <View style={styles.bottomWave} pointerEvents="none" />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -218,9 +230,9 @@ export default function BuscandoPaseadorScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   container: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 48,
+    paddingTop: 32,
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
@@ -274,7 +286,7 @@ const styles = StyleSheet.create({
     marginTop: 32,
     fontSize: 26,
     fontWeight: '700',
-    color: GREEN_TITLE,
+    color: GREEN,
     textAlign: 'center',
     lineHeight: 33,
   },
