@@ -1,4 +1,3 @@
-// Quita el hash de contraseña de una entidad antes de mandarla al cliente.
 export const stripPassword = (entity) => {
   if (!entity) return entity;
   const { passwordHash, ...rest } = entity;
