@@ -1,13 +1,14 @@
 // components/walk-map.tsx
-// Reemplazo del mapa decorativo (View's dibujadas a mano) de
-// paseo_en_curso.tsx: una imagen estática de Google Maps con un pin,
-// proxeada por el backend (GET /maps/static — ver api/maps.ts). No es
-// react-native-maps: sin dev build, anda en Expo Go y en web. Pensado para
-// reusarse en detalles_del_paseo.tsx, que tiene el mismo mapa decorativo.
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+// Mapa del paseo para paseo_en_curso.tsx: un mapa de Google interactivo (se
+// puede mover y hacer zoom — ver interactive-map.tsx) con el paseador, la casa
+// del perro como destino y, mientras va a buscarlo, la ruta caminable que
+// calculó el backend (walk.approachPolyline). Sobre el mapa va el cartel
+// "En vivo / Actualizado hace X".
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { staticMapUrl } from '../api/maps';
+import { InteractiveMap } from './interactive-map';
+import type { MapPayload } from './interactive-map-types';
 import { haceCuanto } from '../lib/paseos';
 import type { LiveLocation } from '../hooks/use-walk-location';
 
@@ -15,51 +16,42 @@ const GREEN = '#4caf50';
 const MAP_BG = '#f1f0ef';
 const TEXT_MUTED = '#9aa39a';
 const TEXT_DARK = '#1f2937';
-const WHITE = '#ffffff';
-
-const MARKER_SIZE = 36;
-const BADGE_SIZE = 18;
 
 export function WalkMap({
   location,
   enVivo,
   conPerro,
+  destino,
+  approachPolyline,
   fill,
   overlayPosition = 'bottom',
+  bottomInset = 0,
 }: {
   location: LiveLocation | null;
   enVivo: boolean;
   // false: el paseador va en camino a buscar al perro (accepted) -> ícono
   // de persona sola. true: el paseo ya arrancó (in_progress) -> se suma un
-  // badge de pata para marcar que ahora está con el perro. No hay un ícono
-  // "persona + perro" en Ionicons, así que se compone con el mismo motivo
-  // de pata que ya usa el resto de la pantalla (chip de estado, timeline).
+  // badge para marcar que ahora está con el perro.
   conPerro: boolean;
+  // Casa del perro (walk.address). null si el paseo no tiene dirección con
+  // coordenadas.
+  destino?: { latitude: number; longitude: number } | null;
+  // Ruta de acercamiento (walk.approachPolyline). Se oculta una vez que el
+  // paseo arrancó: ya no es el camino pendiente.
+  approachPolyline?: string | null;
   // fill: el mapa llena a su contenedor (flex:1) en vez de tener 220px fijos.
   fill?: boolean;
   // Dónde va el cartel "En vivo / Actualizado": abajo (default) o arriba,
   // para pantallas donde una hoja tapa la parte inferior del mapa.
   overlayPosition?: 'top' | 'bottom';
+  // px de abajo tapados por una hoja flotante: el encuadre automático los deja
+  // libres para que el paseador y el destino no queden escondidos.
+  bottomInset?: number;
 }) {
-  const [uri, setUri] = useState<string | null>(null);
-  const [errorImagen, setErrorImagen] = useState(false);
   // Fuerza un re-render cada 5s solo para que "Actualizado hace X" no se
   // quede congelado en el texto que tenía la primera vez que se pintó.
   const [, setTick] = useState(0);
   const mapStyle = fill ? styles.mapFill : styles.map;
-
-  useEffect(() => {
-    if (!location) {
-      setUri(null);
-      return;
-    }
-    setErrorImagen(false);
-    let cancelado = false;
-    staticMapUrl({ latitude: location.latitude, longitude: location.longitude, updatedAt: location.updatedAt })
-      .then((url) => { if (!cancelado) { setUri(url); if (!url) setErrorImagen(true); } })
-      .catch(() => { if (!cancelado) setUri(null); });
-    return () => { cancelado = true; };
-  }, [location]);
 
   useEffect(() => {
     if (!location) return;
@@ -67,7 +59,23 @@ export function WalkMap({
     return () => clearInterval(timer);
   }, [location]);
 
-  if (!location) {
+  const lat = location?.latitude;
+  const lng = location?.longitude;
+  const destLat = destino?.latitude;
+  const destLng = destino?.longitude;
+
+  const data = useMemo<MapPayload>(
+    () => ({
+      walker: lat != null && lng != null ? { lat, lng, conPerro } : undefined,
+      destino: destLat != null && destLng != null ? { lat: destLat, lng: destLng } : undefined,
+      approachPolyline: !conPerro && approachPolyline ? approachPolyline : undefined,
+      fit: 'auto',
+      padding: { bottom: 60 + bottomInset },
+    }),
+    [lat, lng, conPerro, destLat, destLng, approachPolyline, bottomInset]
+  );
+
+  if (!location && !destino) {
     return (
       <View style={[mapStyle, styles.placeholder]}>
         <Ionicons name="paw" size={28} color={TEXT_MUTED} />
@@ -76,46 +84,27 @@ export function WalkMap({
     );
   }
 
-  if (errorImagen || !uri) {
-    return (
-      <View style={[mapStyle, styles.placeholder]}>
-        <Ionicons name={errorImagen ? 'cloud-offline-outline' : 'location'} size={28} color={TEXT_MUTED} />
-        <Text style={styles.placeholderText}>
-          {errorImagen ? 'No pudimos cargar el mapa.' : 'Cargando mapa…'}
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <View style={mapStyle}>
-      <Image
-        source={{ uri }}
-        style={StyleSheet.absoluteFill}
-        onError={() => setErrorImagen(true)}
-      />
-      {/* El backend centra la imagen en (latitude, longitude) y ya no dibuja
-          su propio pin (ver maps.service.js) — este marcador va exactamente
-          en el centro de la imagen, sin cálculo de proyección del lado del
-          frontend. */}
-      <View style={styles.markerWrap} pointerEvents="none">
-        <View style={styles.marker}>
-          <Ionicons name="person" size={18} color={WHITE} />
-          {conPerro && (
-            <View style={styles.markerBadge}>
-              <Ionicons name="paw" size={10} color={WHITE} />
-            </View>
-          )}
-        </View>
-      </View>
-      <View style={[styles.overlay, overlayPosition === 'top' ? styles.overlayTop : styles.overlayBottom]}>
-        {enVivo && (
-          <View style={styles.liveChip}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>En vivo</Text>
-          </View>
+      <InteractiveMap data={data} style={StyleSheet.absoluteFill} />
+      {/* pointerEvents none: el cartel no tapa el arrastre del mapa. */}
+      <View
+        pointerEvents="none"
+        style={[styles.overlay, overlayPosition === 'top' ? styles.overlayTop : styles.overlayBottom]}
+      >
+        {location ? (
+          <>
+            {enVivo && (
+              <View style={styles.liveChip}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>En vivo</Text>
+              </View>
+            )}
+            <Text style={styles.updatedText}>Actualizado {haceCuanto(location.updatedAt)}</Text>
+          </>
+        ) : (
+          <Text style={styles.updatedText}>Esperando la ubicación del paseador…</Text>
         )}
-        <Text style={styles.updatedText}>Actualizado {haceCuanto(location.updatedAt)}</Text>
       </View>
     </View>
   );
@@ -147,41 +136,6 @@ const styles = StyleSheet.create({
     color: TEXT_MUTED,
     fontSize: 13,
     textAlign: 'center',
-  },
-  markerWrap: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginTop: -MARKER_SIZE / 2,
-    marginLeft: -MARKER_SIZE / 2,
-  },
-  marker: {
-    width: MARKER_SIZE,
-    height: MARKER_SIZE,
-    borderRadius: MARKER_SIZE / 2,
-    backgroundColor: GREEN,
-    borderWidth: 3,
-    borderColor: WHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  markerBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: BADGE_SIZE,
-    height: BADGE_SIZE,
-    borderRadius: BADGE_SIZE / 2,
-    backgroundColor: TEXT_DARK,
-    borderWidth: 2,
-    borderColor: WHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   overlay: {
     position: 'absolute',

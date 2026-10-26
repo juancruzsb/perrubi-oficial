@@ -14,6 +14,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { changeWalkStatus, getWalk } from '../../api/walks';
 import type { Walk } from '../../api/types';
+import { useAtrasDelFlujo } from '../../hooks/use-atras';
 
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN        = '#4caf50';
@@ -34,6 +35,9 @@ const POLL_MS = 5000;
 
 export default function BuscandoPaseadorScreen() {
   const router = useRouter();
+  // Sin botón de volver en pantalla: solo para el botón físico de Android, que
+  // si no volvería a crear-paseo (sigue en el historial de los Tabs).
+  useAtrasDelFlujo();
   const { walkId } = useLocalSearchParams<{ walkId?: string }>();
   const id = Number(walkId);
 

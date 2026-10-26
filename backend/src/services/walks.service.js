@@ -1,6 +1,7 @@
 import prisma from "../../db.js";
 import HttpError from "../utils/http-error.js";
 import ChatService from "./chat.service.js";
+import MapsService from "./maps.service.js";
 import { toIntOrNull } from "../utils/sanitize.js";
 import { emitToWalk } from "../sockets/index.js";
 
@@ -214,10 +215,68 @@ WalksService.changeStatus = async (walk, newStatus) => {
   });
 };
 
-// Guarda solo la ÚLTIMA posición conocida del paseador (upsert, no
-// historial) y avisa por socket a quien esté mirando este paseo. Se llama
-// desde el controller ya con el walk (evita un segundo findUnique) y las
-// coordenadas ya validadas.
+// Distancia mínima (m) respecto de la última posición para sumar un punto al
+// historial: el GPS parado "tiembla" unos metros y sin esto el recorrido se
+// llena de puntos inútiles.
+const MIN_POINT_DISTANCE_METERS = 5;
+
+// Distancia en metros entre dos coordenadas (fórmula de haversine).
+const haversineMeters = (a, b) => {
+  const R = 6371000;
+  const rad = (deg) => (deg * Math.PI) / 180;
+  const dLat = rad(b.latitude - a.latitude);
+  const dLng = rad(b.longitude - a.longitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
+
+// walkIds con un cálculo de ruta de acercamiento en vuelo: evita llamar dos
+// veces a la Routes API si llegan PATCH seguidos antes de que termine la 1ª.
+const approachRouteInFlight = new Set();
+
+// Calcula y guarda la ruta caminable desde la primera ubicación del paseador
+// hasta la dirección del paseo (Routes API, vía MapsService.getRoute). Una
+// sola vez por paseo. Nunca lanza: si falla queda en null y el siguiente
+// PATCH de ubicación reintenta.
+WalksService.computeApproachRoute = async (walk, origin) => {
+  if (approachRouteInFlight.has(walk.id)) return;
+  approachRouteInFlight.add(walk.id);
+
+  try {
+    const route = await MapsService.getRoute({
+      origin: { location: { latLng: origin } },
+      destination: {
+        location: { latLng: { latitude: walk.address.latitude, longitude: walk.address.longitude } },
+      },
+    });
+
+    const best = route.routes?.[0];
+    if (!best?.polyline?.encodedPolyline) return;
+
+    const updated = await prisma.walk.update({
+      where: { id: walk.id },
+      data: {
+        approachPolyline: best.polyline.encodedPolyline,
+        approachDistanceMeters: best.distanceMeters ?? null,
+        approachDuration: best.duration ?? null,
+      },
+      select: { approachPolyline: true, approachDistanceMeters: true, approachDuration: true },
+    });
+
+    emitToWalk(walk.id, 'walk:approach-route', { walkId: walk.id, ...updated });
+  } catch (err) {
+    console.error(`No se pudo calcular la ruta de acercamiento del paseo ${walk.id}:`, err.message);
+  } finally {
+    approachRouteInFlight.delete(walk.id);
+  }
+};
+
+// Guarda la ÚLTIMA posición conocida del paseador (upsert), suma un punto al
+// historial para poder dibujar el recorrido después, y avisa por socket a
+// quien esté mirando este paseo. Se llama desde el controller ya con el walk
+// (evita un segundo findUnique) y las coordenadas ya validadas.
 WalksService.upsertLocation = async (walk, { latitude, longitude }) => {
   const currentStatus = walk.status || 'searching';
 
@@ -225,11 +284,31 @@ WalksService.upsertLocation = async (walk, { latitude, longitude }) => {
     throw new HttpError(409, 'El paseo no está en curso');
   }
 
-  const location = await prisma.walkLocation.upsert({
-    where: { walkId: walk.id },
-    create: { walkId: walk.id, latitude, longitude },
-    update: { latitude, longitude },
-  });
+  const movedEnough =
+    !walk.location ||
+    haversineMeters(walk.location, { latitude, longitude }) >= MIN_POINT_DISTANCE_METERS;
+  const phase = currentStatus === 'in_progress' ? 'walk' : 'approach';
+
+  const [location] = await prisma.$transaction([
+    prisma.walkLocation.upsert({
+      where: { walkId: walk.id },
+      create: { walkId: walk.id, latitude, longitude },
+      update: { latitude, longitude },
+    }),
+    ...(movedEnough
+      ? [prisma.walkLocationPoint.create({ data: { walkId: walk.id, latitude, longitude, phase } })]
+      : []),
+  ]);
+
+  // Sin await: no frena la respuesta del PATCH por una llamada a Google.
+  if (
+    currentStatus === 'accepted' &&
+    !walk.approachPolyline &&
+    walk.address?.latitude != null &&
+    walk.address?.longitude != null
+  ) {
+    WalksService.computeApproachRoute(walk, { latitude, longitude });
+  }
 
   emitToWalk(walk.id, 'walk:location', {
     walkId: walk.id,
@@ -239,6 +318,23 @@ WalksService.upsertLocation = async (walk, { latitude, longitude }) => {
   });
 
   return location;
+};
+
+// Recorrido hecho durante el paseo (solo fase 'walk', no el acercamiento) para
+// dibujarlo al final. distanceMeters es la suma de tramos entre puntos.
+WalksService.getWalkRoute = async (walkId) => {
+  const rows = await prisma.walkLocationPoint.findMany({
+    where: { walkId: parseInt(walkId), phase: 'walk' },
+    orderBy: { recordedAt: 'asc' },
+    select: { latitude: true, longitude: true, recordedAt: true },
+  });
+
+  let distanceMeters = 0;
+  for (let i = 1; i < rows.length; i++) {
+    distanceMeters += haversineMeters(rows[i - 1], rows[i]);
+  }
+
+  return { points: rows, distanceMeters: Math.round(distanceMeters) };
 };
 
 export default WalksService;

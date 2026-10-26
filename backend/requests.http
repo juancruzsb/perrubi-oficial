@@ -208,7 +208,7 @@ Content-Type: application/json
 
 ###
 
-@walkId = 13
+@walkId = 19
 
 ### Mis paseos (User o Walker, según el token)
 GET {{baseUrl}}/walks/me
@@ -363,3 +363,12 @@ Content-Type: application/json
 ### porque <Image> del frontend no puede mandar el header Authorization de
 ### forma confiable. Abrir en el navegador (no en el REST Client) para verla.
 GET {{baseUrl}}/maps/static?lat=-34.5667227&lng=-58.4877776&token={{userToken}}
+
+
+### Página del mapa interactivo (Maps JavaScript API). Sin auth; abrir en el
+### navegador. Requiere API_KEY_MAPS_JS en el .env.
+GET {{baseUrl}}/maps/embed
+
+### Recorrido hecho durante el paseo (solo fase in_progress) + distancia.
+GET {{baseUrl}}/walks/1/route
+Authorization: Bearer {{userToken}}

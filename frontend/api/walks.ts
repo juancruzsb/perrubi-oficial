@@ -1,6 +1,6 @@
 // api/walks.ts
 import { apiRequest } from './client';
-import type { Dog, Walk, WalkStatus } from './types';
+import type { Dog, Walk, WalkRoute, WalkStatus } from './types';
 
 export type CreateWalkPayload = {
   dogIds: number[]; // obligatorio y no vacío (walks.controller.js)
@@ -31,6 +31,11 @@ export function getWalk(id: number): Promise<Walk> {
 // español ya listo para mostrar tal cual.
 export function changeWalkStatus(id: number, status: WalkStatus): Promise<Walk> {
   return apiRequest<Walk>(`/walks/${id}/status`, { method: 'PATCH', body: { status } });
+}
+
+// GET /walks/:id/route — recorrido real del paseo para dibujarlo al final.
+export function getWalkRoute(id: number): Promise<WalkRoute> {
+  return apiRequest<WalkRoute>(`/walks/${id}/route`);
 }
 
 // walk.dogs es un array de filas de join (WalkDog), no de Dog — este helper

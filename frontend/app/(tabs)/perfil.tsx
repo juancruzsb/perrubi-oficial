@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useAtrasEnTabRaiz } from '../../hooks/use-atras';
 import { Ionicons } from '@expo/vector-icons';
 import { getMe, nombreCompleto } from '../../api/auth';
 import { useSession } from '../../context/session';
@@ -54,6 +55,7 @@ function iniciales(nombre: string | null, apellido: string | null): string {
 
 export default function PerfilScreen() {
   const router = useRouter();
+  useAtrasEnTabRaiz();
   const { user, token, entrar, salir } = useSession();
   const [confirmando, setConfirmando] = useState(false);
   const [cerrando, setCerrando] = useState(false);

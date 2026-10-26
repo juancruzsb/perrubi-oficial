@@ -116,6 +116,19 @@ export type Walk = {
   dogs: WalkDogRow[];
   users: WalkUserRow[];
   location: WalkLocation | null;
+  // Ruta caminable (Routes API) de la primera ubicación del paseador a la
+  // dirección del paseo; null hasta que el back la calcula (o si el paseo no
+  // tiene dirección con coordenadas). approachDuration viene como "123s".
+  approachPolyline: string | null;
+  approachDistanceMeters: number | null;
+  approachDuration: string | null;
+};
+
+// GET /walks/:id/route — recorrido hecho durante el paseo (fase in_progress),
+// ordenado por recordedAt. No incluye el trayecto de acercamiento.
+export type WalkRoute = {
+  points: { latitude: number; longitude: number; recordedAt: string }[];
+  distanceMeters: number;
 };
 
 // ─── CHAT ─────────────────────────────────────────────────────

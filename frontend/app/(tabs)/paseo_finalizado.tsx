@@ -12,7 +12,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { dogsOf } from '../../api/walks';
+import { InteractiveMap } from '../../components/interactive-map';
+import { useAtrasDelFlujo } from '../../hooks/use-atras';
 import { useWalkPolling } from '../../hooks/use-walk-polling';
+import { distanciaLegible, useWalkRoute } from '../../hooks/use-walk-route';
 
 // ─── COLORES ────────────────────────────────────────────────
 const GREEN          = '#4caf50';
@@ -39,15 +42,17 @@ function subtituloPerros(nombres: string[]): string {
 
 export default function PaseoFinalizadoScreen() {
   const router = useRouter();
+  const volver = useAtrasDelFlujo();
   const { walkId } = useLocalSearchParams<{ walkId?: string }>();
   const { walk, error, cargando } = useWalkPolling(walkId, { poll: false });
+  const { ruta, estado: rutaEstado, mapa: mapaRuta } = useWalkRoute(walk);
 
   if (cargando || !walk) {
     return (
       <SafeAreaView edges={['top']} style={styles.safe}>
         <StatusBar barStyle="dark-content" backgroundColor={SCREEN_BG} />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
+          <TouchableOpacity onPress={volver} hitSlop={10}>
             <Ionicons name="arrow-back" size={24} color={TEXT_DARK} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Paseo Finalizado</Text>
@@ -68,7 +73,7 @@ export default function PaseoFinalizadoScreen() {
 
       {/* ── HEADER ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
+        <TouchableOpacity onPress={volver} hitSlop={10}>
           <Ionicons name="arrow-back" size={24} color={TEXT_DARK} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Paseo Finalizado</Text>
@@ -115,18 +120,38 @@ export default function PaseoFinalizadoScreen() {
           </View>
         </View>
 
-        {/* ── FOTO ── */}
+        {/* ── RECORRIDO ── */}
         <View style={styles.rowSection}>
-          <View style={styles.dogPhoto}>
-            <Ionicons name="paw" size={30} color="#c9bfa0" />
-          </View>
+          {mapaRuta ? (
+            <InteractiveMap data={mapaRuta} style={styles.routeMap} />
+          ) : (
+            <View style={[styles.routeMap, styles.routeMapVacio]}>
+              {rutaEstado === 'cargando' ? (
+                <ActivityIndicator color={GREEN} />
+              ) : (
+                <>
+                  <Ionicons name="paw" size={30} color="#c9bfa0" />
+                  <Text style={styles.routeMapVacioText}>
+                    {rutaEstado === 'error'
+                      ? 'No pudimos cargar el recorrido.'
+                      : 'No hay recorrido registrado.'}
+                  </Text>
+                </>
+              )}
+            </View>
+          )}
         </View>
+        {ruta && ruta.distanceMeters > 0 && (
+          <Text style={styles.routeDistance}>
+            Recorrido: {distanciaLegible(ruta.distanceMeters)}
+          </Text>
+        )}
 
         {/* ── BOTÓN ── */}
         <TouchableOpacity
           style={styles.detailBtn}
           activeOpacity={0.85}
-          onPress={() => router.replace({ pathname: '/detalles_del_paseo', params: { walkId } })}
+          onPress={() => router.navigate({ pathname: '/detalles_del_paseo', params: { walkId } })}
         >
           <Text style={styles.detailBtnText}>Ver detalle</Text>
         </TouchableOpacity>
@@ -257,14 +282,25 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     marginTop: 20,
   },
-  dogPhoto: {
-    width: 200,
-    height: 132,
+  routeMap: {
+    flex: 1,
+    height: 200,
     borderRadius: 18,
+    overflow: 'hidden',
+  },
+  routeMapVacio: {
     backgroundColor: DOG_PLACEHOLDER,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    gap: 8,
+    paddingHorizontal: 24,
+  },
+  routeMapVacioText: { fontSize: 13, color: TEXT_MUTED, textAlign: 'center' },
+  routeDistance: {
+    fontSize: 13,
+    color: TEXT_SECONDARY,
+    textAlign: 'center',
+    marginTop: 8,
   },
 
   // Botón

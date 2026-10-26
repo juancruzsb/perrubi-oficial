@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useAtrasEnTabRaiz } from '../../hooks/use-atras';
 import { useFocusEffect } from "expo-router/react-navigation";
 import { getMyDogs } from '../../api/dogs';
 import { getMyWalks } from '../../api/walks';
@@ -298,6 +299,7 @@ function SeccionPorQueElegir() {
 // ─── PANTALLA PRINCIPAL ──────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
+  useAtrasEnTabRaiz(true);
   const { user } = useSession();
 
   // null = todavía no cargó (evita flashear el estado vacío antes de tiempo)

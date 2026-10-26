@@ -149,4 +149,23 @@ WalksController.updateLocation = asyncHandler(async (req, res) => {
   res.status(200).json(location);
 });
 
+WalksController.getRoute = asyncHandler(async (req, res) => {
+  const walk = await WalksService.getWalkById(req.params.id);
+
+  if (!walk) {
+    throw new HttpError(404, 'Paseo no encontrado');
+  }
+
+  const isAdmin = req.user.role === 'admin';
+  const isAssignedWalker = req.user.type === 'walker' && walk.walkerId === req.user.id;
+  const participates = req.user.type === 'user' && await WalksService.userParticipatesInWalk(walk.id, req.user.id);
+
+  if (!isAdmin && !isAssignedWalker && !participates) {
+    throw new HttpError(403, 'No participás de este paseo');
+  }
+
+  const route = await WalksService.getWalkRoute(walk.id);
+  res.status(200).json(route);
+});
+
 export default WalksController;

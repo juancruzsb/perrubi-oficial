@@ -25,6 +25,7 @@ Config is loaded from `.env` at the package root (via `dotenv/config`, imported 
 - `PORT` — HTTP port the Express app listens on
 - `JWT_SECRET` — signing secret for auth tokens
 - `API_KEY_MAPS` — Google Maps/Places/Routes API key used by `maps.service.js`
+- `API_KEY_MAPS_JS` — Maps JavaScript API key, injected into the page served by `GET /maps/embed` (public by nature: restrict it in GCP)
 
 ## Architecture
 
@@ -47,6 +48,13 @@ Domains currently implemented: `auth`, `dogs`, `maps`, `walks`, `addresses`, `ch
 **Maps integration**: `src/services/maps.service.js` calls Google's Routes API (`computeRoutes`), Places API (`searchText`, place details), and the Maps Static API (`getStaticMap`, a proxied PNG with a pin — used by `GET /maps/static` for the live-location map, see below) directly via `axios`, authenticated with `API_KEY_MAPS`. Read the inline comments in that file for the expected request/response shapes — the frontend does not need to send `travelMode`/`routeModifiers`/etc., those are filled in server-side.
 
 **Real-time (Socket.IO)**: `src/sockets/index.js` (`initSockets`, called from `app.js`) authenticates each socket with the same JWT scheme as HTTP (`socket.handshake.auth.token`, decoded into `socket.data.user`) and groups clients into one room per walk (`walk:<id>`). Two join/leave pairs exist — `chat:join`/`chat:leave` (requires the walk to have a chat) and `walk:join`/`walk:leave` (only requires walk participation, used for location so the owner doesn't need the chat open) — both call `ChatService.assertParticipant`, which despite the name only checks walk participation. **Sockets are read-only**: writes always go through REST (`PATCH /walks/:id/location`, `POST /walks/:id/chat/messages`), and the corresponding service calls `emitToWalk(walkId, event, payload)` (exported from `sockets/index.js`, a no-op if `io` hasn't been initialized) to broadcast afterward. Current events: `chat:message`/`chat:read`/`chat:closed` and `walk:location`.
+
+**Recorrido y mapa interactivo**: `PATCH /walks/:id/location` también inserta un `WalkLocationPoint`
+(historial, `phase` = `approach`/`walk`, descarta puntos a < 5 m) y, en el primer PATCH con el paseo
+`accepted`, calcula una vez la ruta de acercamiento (`Walk.approachPolyline`, vía `MapsService.getRoute`).
+`GET /walks/:id/route` devuelve los puntos de la fase `walk`. `GET /maps/embed` sirve
+`src/views/walk-map.html` (Maps JavaScript API) y requiere `API_KEY_MAPS_JS` (key aparte de
+`API_KEY_MAPS`, porque queda visible en el HTML). Detalle en `../RECORRIDO-Y-MAPA-INTERACTIVO.md`.
 
 ## Frontend integration
 

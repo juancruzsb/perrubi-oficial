@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useAtrasEnTabRaiz } from '../../hooks/use-atras';
 import { Ionicons } from '@expo/vector-icons';
 import { dogsOf, getMyWalks } from '../../api/walks';
 import type { Walk } from '../../api/types';
@@ -39,6 +40,7 @@ function tituloPaseo(w: Walk): string {
 
 export default function MisPaseosScreen() {
   const router = useRouter();
+  useAtrasEnTabRaiz();
   const [filtro, setFiltro] = useState<Filtro>('Todas');
 
   // null = todavía no cargó (evita flashear el estado vacío antes de tiempo)

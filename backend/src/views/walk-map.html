@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Mapa del paseo</title>
+<style>
+  html, body, #map { height: 100%; margin: 0; padding: 0; background: #f1f0ef; }
+  body { font-family: -apple-system, system-ui, sans-serif; }
+  #recenter {
+    display: none; position: absolute; right: 10px; bottom: 28px; z-index: 5;
+    padding: 8px 12px; border: 0; border-radius: 18px; background: #fff; color: #1f2937;
+    font-size: 13px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  }
+  #error { display: none; padding: 24px; text-align: center; color: #9aa39a; font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<button id="recenter" type="button">Recentrar</button>
+<div id="error">No pudimos cargar el mapa.</div>
+
+<script>
+/*
+ * Página del mapa interactivo de Perrubi (GET /maps/embed). La app la carga en
+ * un WebView (nativo) o un <iframe> (web) y le manda el ESTADO COMPLETO a
+ * dibujar por postMessage, siempre como JSON:
+ *
+ *   {
+ *     walker?:  { lat, lng, conPerro },   // posición actual del paseador
+ *     destino?: { lat, lng },             // casa del perro
+ *     approachPolyline?: string,          // encoded polyline (ruta de acercamiento)
+ *     trail?:   [{ lat, lng }],           // recorrido hecho durante el paseo
+ *     fit?:     'auto' | 'none',          // auto: encuadra todo mientras el usuario no toque el mapa
+ *     padding?: { top, right, bottom, left }  // px que tapa la UI de la app encima del mapa
+ *   }
+ *
+ * Lo que no viene en el mensaje se borra del mapa. Al terminar de cargar avisa
+ * { type: 'ready' } al host para que mande el primer estado.
+ */
+var map, walkerMarker, destinoMarker, trailStart, trailEnd, approachLine, trailLine;
+var lastData = null;
+var userTouched = false;
+var programmatic = false;
+var recenterBtn = document.getElementById('recenter');
+
+function toHost(msg) {
+  var text = JSON.stringify(msg);
+  if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(text);
+  else if (window.parent && window.parent !== window) window.parent.postMessage(text, '*');
+}
+
+function svgIcon(svg, size, anchor) {
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(size, size),
+    anchor: new google.maps.Point(anchor !== undefined ? anchor : size / 2, anchor !== undefined ? anchor : size / 2),
+  };
+}
+
+function walkerIcon(conPerro) {
+  var badge = conPerro
+    ? '<circle cx="46" cy="46" r="11" fill="#1f2937" stroke="#fff" stroke-width="3"/>' +
+      '<circle cx="46" cy="46" r="3.5" fill="#fff"/>'
+    : '';
+  var svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">' +
+    '<circle cx="28" cy="28" r="22" fill="#4caf50" stroke="#fff" stroke-width="4"/>' +
+    '<circle cx="28" cy="22" r="6" fill="#fff"/>' +
+    '<path d="M16 40c0-7 5-10 12-10s12 3 12 10z" fill="#fff"/>' + badge + '</svg>';
+  return svgIcon(svg, 44);
+}
+
+function destinoIcon() {
+  var svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="60" viewBox="0 0 48 60">' +
+    '<path d="M24 58C24 58 4 36 4 22a20 20 0 0 1 40 0c0 14-20 36-20 36z" fill="#1f2937" stroke="#fff" stroke-width="3"/>' +
+    '<path d="M24 12L11 23h4v10h7v-7h4v7h7V23h4z" fill="#fff"/></svg>';
+  return svgIcon(svg, 44, 22);
+}
+
+function dotIcon(color) {
+  var svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">' +
+    '<circle cx="12" cy="12" r="8" fill="' + color + '" stroke="#fff" stroke-width="3"/></svg>';
+  return svgIcon(svg, 20);
+}
+
+// Crea el elemento la primera vez; después solo lo mueve / lo borra.
+function setMarker(current, pos, icon, zIndex) {
+  if (!pos) {
+    if (current) current.setMap(null);
+    return null;
+  }
+  var position = { lat: pos.lat, lng: pos.lng };
+  if (!current) return new google.maps.Marker({ map: map, position: position, icon: icon, zIndex: zIndex, clickable: false });
+  current.setMap(map);
+  current.setPosition(position);
+  current.setIcon(icon);
+  return current;
+}
+
+function setLine(current, path, options) {
+  if (!path || path.length < 2) {
+    if (current) current.setMap(null);
+    return null;
+  }
+  if (!current) return new google.maps.Polyline(Object.assign({ map: map, path: path, clickable: false }, options));
+  current.setMap(map);
+  current.setPath(path);
+  return current;
+}
+
+function fitAll() {
+  var bounds = new google.maps.LatLngBounds();
+  var count = 0;
+  function extend(p) { bounds.extend(p); count++; }
+
+  if (walkerMarker && walkerMarker.getMap()) extend(walkerMarker.getPosition());
+  if (destinoMarker && destinoMarker.getMap()) extend(destinoMarker.getPosition());
+  [approachLine, trailLine].forEach(function (line) {
+    if (line && line.getMap()) line.getPath().forEach(extend);
+  });
+  if (count === 0) return;
+
+  var pad = (lastData && lastData.padding) || {};
+  var padding = {
+    top: pad.top != null ? pad.top : 60,
+    right: pad.right != null ? pad.right : 40,
+    bottom: pad.bottom != null ? pad.bottom : 60,
+    left: pad.left != null ? pad.left : 40,
+  };
+
+  programmatic = true;
+  if (count === 1) {
+    map.setCenter(bounds.getCenter());
+    map.setZoom(16);
+  } else {
+    map.fitBounds(bounds, padding);
+  }
+  google.maps.event.addListenerOnce(map, 'idle', function () { programmatic = false; });
+}
+
+function render(data) {
+  lastData = data;
+
+  walkerMarker = setMarker(walkerMarker, data.walker, data.walker && walkerIcon(!!data.walker.conPerro), 3);
+  destinoMarker = setMarker(destinoMarker, data.destino, destinoIcon(), 2);
+
+  var approachPath = data.approachPolyline
+    ? google.maps.geometry.encoding.decodePath(data.approachPolyline)
+    : null;
+  approachLine = setLine(approachLine, approachPath, {
+    strokeOpacity: 0,
+    icons: [{
+      icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, strokeColor: '#4caf50', strokeWeight: 4, scale: 3 },
+      offset: '0',
+      repeat: '14px',
+    }],
+  });
+
+  var trail = (data.trail || []).map(function (p) { return { lat: p.lat, lng: p.lng }; });
+  trailLine = setLine(trailLine, trail, { strokeColor: '#4caf50', strokeOpacity: 0.95, strokeWeight: 5 });
+  trailStart = setMarker(trailStart, trail.length > 1 ? trail[0] : null, dotIcon('#ffffff'), 1);
+  trailEnd = setMarker(trailEnd, trail.length > 1 ? trail[trail.length - 1] : null, dotIcon('#4caf50'), 1);
+
+  if (data.fit === 'auto' && !userTouched) fitAll();
+}
+
+function onUserMoved() {
+  if (programmatic || userTouched) return;
+  userTouched = true;
+  recenterBtn.style.display = 'block';
+}
+
+function onMessage(event) {
+  if (typeof event.data !== 'string') return;
+  var data;
+  try { data = JSON.parse(event.data); } catch (e) { return; }
+  if (!data || typeof data !== 'object' || data.type === 'ready') return;
+  render(data);
+}
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: -34.6037, lng: -58.3816 },
+    zoom: 14,
+    disableDefaultUI: true,
+    zoomControl: true,
+    // 'greedy': un dedo alcanza para mover el mapa. Con el default ('cooperative')
+    // dentro de un WebView hacen falta dos dedos.
+    gestureHandling: 'greedy',
+    clickableIcons: false,
+    styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }],
+  });
+
+  map.addListener('dragstart', onUserMoved);
+  map.addListener('zoom_changed', onUserMoved);
+
+  recenterBtn.addEventListener('click', function () {
+    userTouched = false;
+    recenterBtn.style.display = 'none';
+    if (lastData) fitAll();
+  });
+
+  window.addEventListener('message', onMessage);
+  document.addEventListener('message', onMessage); // WebView de Android
+  toHost({ type: 'ready' });
+}
+
+function mapsFailed() {
+  document.getElementById('map').style.display = 'none';
+  document.getElementById('error').style.display = 'block';
+}
+window.gm_authFailure = mapsFailed;
+</script>
+<script async onerror="mapsFailed()"
+  src="https://maps.googleapis.com/maps/api/js?key=__MAPS_JS_KEY__&libraries=geometry&callback=initMap"></script>
+</body>
+</html>

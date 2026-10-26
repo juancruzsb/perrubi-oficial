@@ -245,6 +245,10 @@ contra el repo y cambiaron el alcance real:
 - `app/(tabs)/paseo_en_curso.tsx` — el mapa decorativo (`View`s a mano) se reemplazó por
   `<WalkMap>`; se sacaron los estilos que quedaron muertos.
 
+> **Actualización:** el mapa estático (`GET /maps/static` + `<Image>`) fue reemplazado por un mapa
+> interactivo (Maps JS en WebView), y ahora se guarda el historial de puntos, el destino y la ruta de
+> acercamiento. Ver `RECORRIDO-Y-MAPA-INTERACTIVO.md`. Lo que sigue describe el estado original.
+
 ### Qué queda afuera
 
 - **Lado paseador (emitir el GPS real)** — bloqueado por la falta de rol/auth de paseador en el

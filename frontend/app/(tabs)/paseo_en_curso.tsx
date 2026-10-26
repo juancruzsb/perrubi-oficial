@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { dogsOf } from '../../api/walks';
+import { useAtrasDelFlujo } from '../../hooks/use-atras';
 import { useWalkPolling } from '../../hooks/use-walk-polling';
 import { useWalkLocation } from '../../hooks/use-walk-location';
 import { WalkMap } from '../../components/walk-map';
@@ -32,6 +33,7 @@ const BOX_BORDER      = '#eef0ee';
 
 export default function PaseoEnCursoScreen() {
   const router = useRouter();
+  const volver = useAtrasDelFlujo();
   const { walkId } = useLocalSearchParams<{ walkId?: string }>();
   const { walk, error, cargando } = useWalkPolling(walkId, { poll: true });
   const { location, enVivo } = useWalkLocation(walk?.id ?? null, walk?.location ?? null);
@@ -77,7 +79,7 @@ export default function PaseoEnCursoScreen() {
 
       {/* ── HEADER ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
+        <TouchableOpacity onPress={volver} hitSlop={10}>
           <Ionicons name="arrow-back" size={24} color={TEXT_DARK} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Paseo en curso</Text>
@@ -106,7 +108,20 @@ export default function PaseoEnCursoScreen() {
         style={styles.mapWrapper}
         onLayout={(e) => setAreaH(e.nativeEvent.layout.height)}
       >
-        <WalkMap location={location} enVivo={enVivo} conPerro={enCurso} fill overlayPosition="top" />
+        <WalkMap
+          location={location}
+          enVivo={enVivo}
+          conPerro={enCurso}
+          destino={
+            walk.address?.latitude != null && walk.address?.longitude != null
+              ? { latitude: walk.address.latitude, longitude: walk.address.longitude }
+              : null
+          }
+          approachPolyline={walk.approachPolyline}
+          fill
+          overlayPosition="top"
+          bottomInset={140}
+        />
 
         {areaH > 0 && (
           <BottomSheet
