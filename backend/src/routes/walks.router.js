@@ -8,9 +8,11 @@ router.get('/', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyAdmin, WalksC
 router.get('/me', AuthMiddlewares.verifyToken, WalksController.getMyWalks)
 router.get('/available', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyWalker, WalksController.getAvailableWalks)
 router.get('/:id', AuthMiddlewares.verifyToken, WalksController.getWalkById)
-router.post('/', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyUser, WalksController.createWalk)
+router.get('/:id/route', AuthMiddlewares.verifyToken, WalksController.getRoute)
+router.post('/',AuthMiddlewares.verifyToken, AuthMiddlewares.verifyUser, WalksController.createWalk)
 router.put('/:id', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyUser, WalksController.updateWalk)
 router.patch('/:id/accept', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyWalker, WalksController.acceptWalk)
 router.patch('/:id/status', AuthMiddlewares.verifyToken, WalksController.changeStatus)
+router.patch('/:id/location', AuthMiddlewares.verifyToken, AuthMiddlewares.verifyWalker, WalksController.updateLocation)
 
 export default router;

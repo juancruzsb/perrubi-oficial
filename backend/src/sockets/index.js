@@ -50,6 +50,32 @@ export const initSockets = (httpServer) => {
     socket.on('chat:leave', ({ walkId } = {}) => {
       socket.leave(walkRoom(walkId));
     });
+
+    // walk:join/leave — genéricos, separados de chat:join a propósito:
+    // paseo_en_curso.tsx quiere la ubicación en vivo sin depender de que el
+    // chat esté abierto (assertParticipant solo exige participar del walk,
+    // no que exista un Chat). Misma room que el chat (walk:<id>) — unirse a
+    // las dos no duplica nada, socket.io las trata como un set.
+    socket.on('walk:join', async ({ walkId } = {}, callback = () => {}) => {
+      try {
+        const walk = await WalksService.getWalkById(walkId);
+
+        if (!walk) {
+          return callback({ error: 'Paseo no encontrado' });
+        }
+
+        await ChatService.assertParticipant(walk, socket.data.user);
+
+        socket.join(walkRoom(walkId));
+        callback({ ok: true });
+      } catch (error) {
+        callback({ error: error.message || 'No se pudo unir al paseo' });
+      }
+    });
+
+    socket.on('walk:leave', ({ walkId } = {}) => {
+      socket.leave(walkRoom(walkId));
+    });
   });
 
   return io;

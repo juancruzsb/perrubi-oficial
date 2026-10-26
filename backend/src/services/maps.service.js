@@ -136,4 +136,34 @@ MapsService.getDirection = async ({ textQuery }) => {
     return response.data
 }
 
+MapsService.getStaticMap = async ({ latitude, longitude, zoom, width, height }) => {
+    // Proxy de la Maps Static API (https://maps.googleapis.com/maps/api/staticmap):
+    // devuelve una imagen PNG ya renderizada por Google centrada en
+    // (latitude, longitude), en vez de tiles interactivos. Es el reemplazo de
+    // react-native-maps para "mostrar dónde está el paseador" sin dev build:
+    // el frontend solo necesita un <Image source={{uri: '/maps/static?...'}} />.
+    // Requiere habilitar "Maps Static API" en el proyecto de GCP de
+    // API_KEY_MAPS (Routes/Places no la habilitan solas).
+    //
+    // Sin `markers`: el pin ya no lo dibuja Google. walk-map.tsx superpone su
+    // propio ícono (persona / persona+perro según el estado del paseo) en el
+    // centro exacto de la imagen — al estar `center` = (latitude, longitude),
+    // el centro de la imagen ES la ubicación, sin cálculo extra del lado del
+    // frontend.
+    const params = new URLSearchParams({
+      center: `${latitude},${longitude}`,
+      zoom: String(zoom),
+      size: `${width}x${height}`,
+      scale: '2',
+      key: process.env.API_KEY_MAPS,
+    });
+
+    const response = await axios.get(
+      `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`,
+      { responseType: 'arraybuffer' }
+    );
+
+    return { buffer: response.data, contentType: response.headers['content-type'] || 'image/png' };
+}
+
 export default MapsService

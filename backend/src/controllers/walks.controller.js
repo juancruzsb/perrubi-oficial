@@ -1,11 +1,12 @@
 import WalksService from '../services/walks.service.js';
 import asyncHandler from '../utils/async-handler.js';
 import HttpError from '../utils/http-error.js';
+import { toFloatOrNull } from '../utils/sanitize.js';
 
 const WalksController = {};
 
 WalksController.createWalk = asyncHandler(async (req, res) => {
-  const { dogIds, walkType, startTime, duration } = req.body;
+  const { dogIds, walkType, startTime, duration, notes, addressId } = req.body;
 
   if (!Array.isArray(dogIds) || dogIds.length === 0) {
     throw new HttpError(400, 'dogIds es obligatorio y debe ser un array no vacío');
@@ -16,7 +17,17 @@ WalksController.createWalk = asyncHandler(async (req, res) => {
     throw new HttpError(403, 'Alguno de los perros no te pertenece');
   }
 
-  const walk = await WalksService.createWalk(req.user.id, { walkType, startTime, duration });
+  if (addressId != null) {
+    const ownsAddress = await WalksService.userOwnsAddress(req.user.id, addressId);
+    if (!ownsAddress) {
+      throw new HttpError(403, 'Esa dirección no te pertenece');
+    }
+  }
+
+  // Bug corregido: antes se validaba la propiedad de dogIds pero nunca se
+  // pasaba al service, así que todo paseo quedaba creado con dogs: [] para
+  // siempre (ver INTEGRACION-BACKEND-FRONTEND.md).
+  const walk = await WalksService.createWalk(req.user.id, { dogIds, walkType, startTime, duration, notes, addressId });
   res.status(201).json(walk);
 });
 
@@ -72,6 +83,13 @@ WalksController.updateWalk = asyncHandler(async (req, res) => {
     throw new HttpError(400, 'Solo se puede editar un paseo mientras está en búsqueda');
   }
 
+  if (req.body.addressId != null) {
+    const ownsAddress = await WalksService.userOwnsAddress(req.user.id, req.body.addressId);
+    if (!ownsAddress) {
+      throw new HttpError(403, 'Esa dirección no te pertenece');
+    }
+  }
+
   const updated = await WalksService.updateWalk(walk.id, req.body);
   res.status(200).json(updated);
 });
@@ -103,6 +121,51 @@ WalksController.changeStatus = asyncHandler(async (req, res) => {
 
   const updated = await WalksService.changeStatus(walk, status);
   res.status(200).json(updated);
+});
+
+WalksController.updateLocation = asyncHandler(async (req, res) => {
+  const latitude = toFloatOrNull(req.body.latitude);
+  const longitude = toFloatOrNull(req.body.longitude);
+
+  if (latitude === null || longitude === null) {
+    throw new HttpError(400, 'latitude y longitude son obligatorios');
+  }
+
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    throw new HttpError(400, 'Coordenadas inválidas');
+  }
+
+  const walk = await WalksService.getWalkById(req.params.id);
+
+  if (!walk) {
+    throw new HttpError(404, 'Paseo no encontrado');
+  }
+
+  if (walk.walkerId !== req.user.id) {
+    throw new HttpError(403, 'No sos el paseador de este paseo');
+  }
+
+  const location = await WalksService.upsertLocation(walk, { latitude, longitude });
+  res.status(200).json(location);
+});
+
+WalksController.getRoute = asyncHandler(async (req, res) => {
+  const walk = await WalksService.getWalkById(req.params.id);
+
+  if (!walk) {
+    throw new HttpError(404, 'Paseo no encontrado');
+  }
+
+  const isAdmin = req.user.role === 'admin';
+  const isAssignedWalker = req.user.type === 'walker' && walk.walkerId === req.user.id;
+  const participates = req.user.type === 'user' && await WalksService.userParticipatesInWalk(walk.id, req.user.id);
+
+  if (!isAdmin && !isAssignedWalker && !participates) {
+    throw new HttpError(403, 'No participás de este paseo');
+  }
+
+  const route = await WalksService.getWalkRoute(walk.id);
+  res.status(200).json(route);
 });
 
 export default WalksController;

@@ -80,9 +80,19 @@ model Walk {
   duration  Int?       // en minutos
   endTime   DateTime?  @map("end_time")
   createdAt DateTime   @default(now()) @map("created_at")
+  notes     String?
+  addressId Int?       @map("address_id")
+  address   Address?   @relation(fields: [addressId], references: [id], onDelete: SetNull)
   dogs      WalkDog[]
   users     WalkUser[]
   chat      Chat?
+  location  WalkLocation?
+  locationPoints WalkLocationPoint[]
+  // Ruta caminable (Routes API) desde la primera ubicación del paseador hasta
+  // la dirección del paseo. Se calcula una sola vez, ver WalksService.
+  approachPolyline       String? @map("approach_polyline") // encoded polyline
+  approachDistanceMeters Int?    @map("approach_distance_meters")
+  approachDuration       String? @map("approach_duration") // "123s", como lo devuelve Routes
 
   @@map("walk")
 }
@@ -133,6 +143,32 @@ model ChatMessage {
   @@map("chat_message")
 }
 
+model WalkLocation {
+  id        Int      @id @default(autoincrement())
+  walkId    Int      @unique @map("walk_id")
+  walk      Walk     @relation(fields: [walkId], references: [id], onDelete: Cascade)
+  latitude  Float
+  longitude Float
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("walk_location")
+}
+
+// Historial de posiciones del paseador (WalkLocation guarda solo la última).
+// phase: 'approach' (accepted, yendo a buscar al perro) | 'walk' (in_progress).
+model WalkLocationPoint {
+  id         Int      @id @default(autoincrement())
+  walkId     Int      @map("walk_id")
+  walk       Walk     @relation(fields: [walkId], references: [id], onDelete: Cascade)
+  latitude   Float
+  longitude  Float
+  phase      String
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  @@index([walkId, recordedAt])
+  @@map("walk_location_point")
+}
+
 model Address {
   id        Int     @id @default(autoincrement())
   userId    Int     @map("user_id")
@@ -145,6 +181,7 @@ model Address {
   zipCode   String? @map("zip_code")
   latitude  Float?
   longitude Float?
+  walks     Walk[]
 
   @@map("address")
 }

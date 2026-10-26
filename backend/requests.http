@@ -4,7 +4,7 @@
 ### y hacé click en "Send Request" arriba de cada bloque (empezando por los logins).
 ### Las variables @userToken / @walkerToken se completan solas con la respuesta del login.
 
-@baseUrl = http://localhost:3002
+@baseUrl = http://localhost:3000
 
 ### =========================================================
 ### AUTH
@@ -38,8 +38,8 @@ POST {{baseUrl}}/auth/userLogin
 Content-Type: application/json
 
 {
-  "email": "juan.user@test.com",
-  "password": "123456"
+  "email": "juan@mail.com",
+  "password": "12345678"
 }
 
 ###
@@ -208,7 +208,7 @@ Content-Type: application/json
 
 ###
 
-@walkId = {{createWalk.response.body.id}}
+@walkId = 19
 
 ### Mis paseos (User o Walker, según el token)
 GET {{baseUrl}}/walks/me
@@ -241,7 +241,7 @@ Authorization: Bearer {{walkerToken}}
 Content-Type: application/json
 
 {
-  "status": "in_progress"
+  "status": "finished"
 }
 
 ### Todos los paseos (requiere admin)
@@ -274,12 +274,51 @@ Authorization: Bearer {{walkerToken}}
 Content-Type: application/json
 
 {
-  "body": "Perfecto, llego en 5 minutos"
+  "body": "Hola como estas? Estoy llegando"
 }
 
 ### Marcar como leídos los mensajes del otro participante
 PATCH {{baseUrl}}/walks/{{walkId}}/chat/read
 Authorization: Bearer {{userToken}}
+
+
+### =========================================================
+### UBICACIÓN EN TIEMPO REAL (solo el paseador asignado, paseo accepted/in_progress)
+### No hay UI de paseador en el frontend todavía -> mientras tanto, esto (o
+### backend/scripts/simulate-location.js) es la única forma de mandar GPS.
+### El dueño la recibe por socket (evento walk:location, room walk:{{walkId}})
+### o por polling normal de GET /walks/{{walkId}} (ver UBICACION-TIEMPO-REAL.md).
+### =========================================================
+
+### Publicar la posición del paseador
+PATCH {{baseUrl}}/walks/{{walkId}}/location
+Authorization: Bearer {{walkerToken}}
+Content-Type: application/json
+
+{
+  "latitude": -34.5667227,
+  "longitude": -58.4877776
+}
+
+### Coordenadas inválidas -> 400
+PATCH {{baseUrl}}/walks/{{walkId}}/location
+Authorization: Bearer {{walkerToken}}
+Content-Type: application/json
+
+{
+  "latitude": 999,
+  "longitude": -58.4877776
+}
+
+### Con el token del dueño (no es el paseador) -> 403
+PATCH {{baseUrl}}/walks/{{walkId}}/location
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "latitude": -34.5667227,
+  "longitude": -58.4877776
+}
 
 
 ### =========================================================
@@ -318,3 +357,18 @@ Content-Type: application/json
     }
   }
 }
+
+### Imagen de mapa estático con un pin (reemplazo de react-native-maps para
+### mostrar la ubicación en vivo sin dev build). El token va en la query
+### porque <Image> del frontend no puede mandar el header Authorization de
+### forma confiable. Abrir en el navegador (no en el REST Client) para verla.
+GET {{baseUrl}}/maps/static?lat=-34.5667227&lng=-58.4877776&token={{userToken}}
+
+
+### Página del mapa interactivo (Maps JavaScript API). Sin auth; abrir en el
+### navegador. Requiere API_KEY_MAPS_JS en el .env.
+GET {{baseUrl}}/maps/embed
+
+### Recorrido hecho durante el paseo (solo fase in_progress) + distancia.
+GET {{baseUrl}}/walks/1/route
+Authorization: Bearer {{userToken}}

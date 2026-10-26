@@ -8,7 +8,7 @@ Perrubi — "Uber para perros" (dog-walking marketplace). This is the **backend*
 
 ## Commands
 
-- Run in dev (watch mode): `npm run dev` — this runs `nodemon src/server.js`, but note **`src/server.js` does not currently exist**; the real Express entry point is `app.js` at the package root. Run the app directly with `node app.js` until the `dev` script is fixed, or fix the script to point at `app.js`.
+- Run in dev (watch mode): `npm run dev` — runs `nodemon app.js`, the real Express entry point. (Corrected: an earlier version of this doc claimed this pointed at a nonexistent `src/server.js` — that was never accurate; `package.json` has always pointed at `app.js` and it works.)
 - No test suite exists yet (`npm test` is a stub that exits with an error).
 - No lint config exists.
 - Prisma:
@@ -25,6 +25,7 @@ Config is loaded from `.env` at the package root (via `dotenv/config`, imported 
 - `PORT` — HTTP port the Express app listens on
 - `JWT_SECRET` — signing secret for auth tokens
 - `API_KEY_MAPS` — Google Maps/Places/Routes API key used by `maps.service.js`
+- `API_KEY_MAPS_JS` — Maps JavaScript API key, injected into the page served by `GET /maps/embed` (public by nature: restrict it in GCP)
 
 ## Architecture
 
@@ -36,12 +37,29 @@ src/controllers/<domain>.controller.js -> req/res handling, status codes, input 
 src/services/<domain>.service.js    -> business logic + Prisma queries (no req/res)
 ```
 
-Domains currently implemented: `auth`, `dogs`, `maps`. Follow this same three-file pattern (router → controller → service) when adding a new domain; each layer exports a plain object of named functions (e.g. `const DogsController = {}; DogsController.getAllDogs = ...; export default DogsController`), not a class.
+Domains currently implemented: `auth`, `dogs`, `maps`, `walks`, `addresses`, `chat`. Follow this same three-file pattern (router → controller → service) when adding a new domain; each layer exports a plain object of named functions (e.g. `const DogsController = {}; DogsController.getAllDogs = ...; export default DogsController`), not a class.
 
 **Database access**: a single shared Prisma client instance lives in `db.js` at the package root (built with the `@prisma/adapter-pg` driver adapter over a `pg.Pool`). Services import it as `import prisma from '../../db.js'` — always reuse this shared instance rather than instantiating a new `PrismaClient`.
 
 **Auth**: `src/middlewares/auth.middlewares.js` exports `verifyToken` (validates the `Authorization: Bearer <jwt>` header, decodes with `JWT_SECRET`, sets `req.user`) and `verifyAdmin` (requires `req.user.role === 'admin'`, so it must run after `verifyToken`). There are two separate identity types with separate Prisma models and separate login/register flows: `User` (dog owners) and `Walker` (dog walkers) — see `auth.service.js` / `auth.controller.js`, which keep `userRegister`/`userLogin` and `walkerRegister`/`walkerLogin` as distinct pairs rather than a unified account model.
 
-**Schema relationships** (`prisma/schema.prisma`): `User` and `Dog` are many-to-many via `UserDog`; a `Walk` belongs to one `Walker` and has many-to-many `Dog`s (via `WalkDog`) and `User`s (via `WalkUser`). Prisma fields are camelCase and mapped to snake_case DB columns (`@map(...)` / `@@map(...)`).
+**Schema relationships** (`prisma/schema.prisma`): `User` and `Dog` are many-to-many via `UserDog`; a `Walk` belongs to one `Walker` and has many-to-many `Dog`s (via `WalkDog`) and `User`s (via `WalkUser`), and optionally one `Address` (`Walk.addressId`, added for the free-text location field on the frontend's create-walk screen). Prisma fields are camelCase and mapped to snake_case DB columns (`@map(...)` / `@@map(...)`).
 
-**Maps integration**: `src/services/maps.service.js` calls Google's Routes API (`computeRoutes`) and Places API (`searchText`, place details) directly via `axios`, authenticated with `API_KEY_MAPS`. Read the inline comments in that file for the expected request/response shapes — the frontend does not need to send `travelMode`/`routeModifiers`/etc., those are filled in server-side.
+**Maps integration**: `src/services/maps.service.js` calls Google's Routes API (`computeRoutes`), Places API (`searchText`, place details), and the Maps Static API (`getStaticMap`, a proxied PNG with a pin — used by `GET /maps/static` for the live-location map, see below) directly via `axios`, authenticated with `API_KEY_MAPS`. Read the inline comments in that file for the expected request/response shapes — the frontend does not need to send `travelMode`/`routeModifiers`/etc., those are filled in server-side.
+
+**Real-time (Socket.IO)**: `src/sockets/index.js` (`initSockets`, called from `app.js`) authenticates each socket with the same JWT scheme as HTTP (`socket.handshake.auth.token`, decoded into `socket.data.user`) and groups clients into one room per walk (`walk:<id>`). Two join/leave pairs exist — `chat:join`/`chat:leave` (requires the walk to have a chat) and `walk:join`/`walk:leave` (only requires walk participation, used for location so the owner doesn't need the chat open) — both call `ChatService.assertParticipant`, which despite the name only checks walk participation. **Sockets are read-only**: writes always go through REST (`PATCH /walks/:id/location`, `POST /walks/:id/chat/messages`), and the corresponding service calls `emitToWalk(walkId, event, payload)` (exported from `sockets/index.js`, a no-op if `io` hasn't been initialized) to broadcast afterward. Current events: `chat:message`/`chat:read`/`chat:closed` and `walk:location`.
+
+**Recorrido y mapa interactivo**: `PATCH /walks/:id/location` también inserta un `WalkLocationPoint`
+(historial, `phase` = `approach`/`walk`, descarta puntos a < 5 m) y, en el primer PATCH con el paseo
+`accepted`, calcula una vez la ruta de acercamiento (`Walk.approachPolyline`, vía `MapsService.getRoute`).
+`GET /walks/:id/route` devuelve los puntos de la fase `walk`. `GET /maps/embed` sirve
+`src/views/walk-map.html` (Maps JavaScript API) y requiere `API_KEY_MAPS_JS` (key aparte de
+`API_KEY_MAPS`, porque queda visible en el HTML). Detalle en `../RECORRIDO-Y-MAPA-INTERACTIVO.md`.
+
+## Frontend integration
+
+See `CAMBIOS-BACKEND.md` for the structural backend changes made to connect this API to the
+frontend (the `dogIds`-not-linked bug fix in `walks.controller.js`, the `Walk.notes`/`Walk.addressId`
+migration and why it was hand-authored, the `userOwnsAddress` ownership check, and two unrelated
+one-line hardenings found along the way) — and `../INTEGRACION-BACKEND-FRONTEND.md` at the repo root
+for the full picture of what got wired up on the frontend side.
