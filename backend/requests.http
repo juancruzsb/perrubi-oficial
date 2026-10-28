@@ -365,10 +365,6 @@ Content-Type: application/json
 GET {{baseUrl}}/maps/static?lat=-34.5667227&lng=-58.4877776&token={{userToken}}
 
 
-### Página del mapa interactivo (Maps JavaScript API). Sin auth; abrir en el
-### navegador. Requiere API_KEY_MAPS_JS en el .env.
-GET {{baseUrl}}/maps/embed
-
 ### Recorrido hecho durante el paseo (solo fase in_progress) + distancia.
 GET {{baseUrl}}/walks/1/route
 Authorization: Bearer {{userToken}}

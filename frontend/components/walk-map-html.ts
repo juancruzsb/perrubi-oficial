@@ -1,3 +1,9 @@
+// components/walk-map-html.ts
+// Página HTML del mapa interactivo (Maps JavaScript API) que cargan
+// interactive-map.tsx (WebView) e interactive-map.web.tsx (<iframe srcDoc>).
+// La key sale de EXPO_PUBLIC_MAPS_JS_KEY (frontend/.env): es pública por
+// naturaleza, restringila por referrer/API en GCP.
+const TEMPLATE = `
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -22,7 +28,7 @@
 
 <script>
 /*
- * Página del mapa interactivo de Perrubi (GET /maps/embed). La app la carga en
+ * Página del mapa interactivo de Perrubi (components/walk-map-html.ts). La app la carga en
  * un WebView (nativo) o un <iframe> (web) y le manda el ESTADO COMPLETO a
  * dibujar por postMessage, siempre como JSON:
  *
@@ -218,3 +224,9 @@ window.gm_authFailure = mapsFailed;
   src="https://maps.googleapis.com/maps/api/js?key=__MAPS_JS_KEY__&libraries=geometry&callback=initMap"></script>
 </body>
 </html>
+`;
+
+export function walkMapHtml(): string {
+  const key = process.env.EXPO_PUBLIC_MAPS_JS_KEY ?? '';
+  return TEMPLATE.replace('__MAPS_JS_KEY__', encodeURIComponent(key));
+}

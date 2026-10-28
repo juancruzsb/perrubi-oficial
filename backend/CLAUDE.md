@@ -25,7 +25,6 @@ Config is loaded from `.env` at the package root (via `dotenv/config`, imported 
 - `PORT` — HTTP port the Express app listens on
 - `JWT_SECRET` — signing secret for auth tokens
 - `API_KEY_MAPS` — Google Maps/Places/Routes API key used by `maps.service.js`
-- `API_KEY_MAPS_JS` — Maps JavaScript API key, injected into the page served by `GET /maps/embed` (public by nature: restrict it in GCP)
 
 ## Architecture
 
@@ -52,9 +51,8 @@ Domains currently implemented: `auth`, `dogs`, `maps`, `walks`, `addresses`, `ch
 **Recorrido y mapa interactivo**: `PATCH /walks/:id/location` también inserta un `WalkLocationPoint`
 (historial, `phase` = `approach`/`walk`, descarta puntos a < 5 m) y, en el primer PATCH con el paseo
 `accepted`, calcula una vez la ruta de acercamiento (`Walk.approachPolyline`, vía `MapsService.getRoute`).
-`GET /walks/:id/route` devuelve los puntos de la fase `walk`. `GET /maps/embed` sirve
-`src/views/walk-map.html` (Maps JavaScript API) y requiere `API_KEY_MAPS_JS` (key aparte de
-`API_KEY_MAPS`, porque queda visible en el HTML). Detalle en `../RECORRIDO-Y-MAPA-INTERACTIVO.md`.
+`GET /walks/:id/route` devuelve los puntos de la fase `walk`. La página del mapa
+interactivo (Maps JavaScript API) vive en el frontend (`components/walk-map-html.ts`). Detalle en `../RECORRIDO-Y-MAPA-INTERACTIVO.md`.
 
 ## Frontend integration
 

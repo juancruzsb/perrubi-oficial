@@ -4,8 +4,8 @@
 // postMessage.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { embedMapUrl } from '../api/maps';
 import type { MapPayload } from './interactive-map-types';
+import { walkMapHtml } from './walk-map-html';
 
 export function InteractiveMap({
   data,
@@ -39,7 +39,7 @@ export function InteractiveMap({
     <View style={[styles.container, style]}>
       {React.createElement('iframe', {
         ref: frameRef,
-        src: embedMapUrl(),
+        srcDoc: walkMapHtml(),
         title: 'Mapa del paseo',
         style: { width: '100%', height: '100%', border: 0 },
       })}

@@ -1,14 +1,15 @@
 // components/interactive-map.tsx
 // Mapa de Google que el usuario puede mover y hacer zoom: un WebView que carga
-// la página del backend (GET /maps/embed, Maps JavaScript API) y recibe lo que
+// la página del mapa (walk-map-html.ts, Maps JavaScript API) y recibe lo que
 // tiene que dibujar por postMessage. Corre en Expo Go (react-native-webview
 // viene incluido), a diferencia de react-native-maps. La versión web es
 // interactive-map.web.tsx (un <iframe>, misma API).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { embedMapUrl } from '../api/maps';
+import { BASE_URL } from '../api/client';
 import type { MapPayload } from './interactive-map-types';
+import { walkMapHtml } from './walk-map-html';
 
 export function InteractiveMap({
   data,
@@ -31,7 +32,8 @@ export function InteractiveMap({
     <View style={[styles.container, style]}>
       <WebView
         ref={webRef}
-        source={{ uri: embedMapUrl() }}
+        // baseUrl: el referrer que ve Google es el backend, como cuando la página se servía de ahí.
+        source={{ html: walkMapHtml(), baseUrl: BASE_URL }}
         originWhitelist={['*']}
         javaScriptEnabled
         // Android: que el arrastre del mapa no se lo robe un ScrollView padre.

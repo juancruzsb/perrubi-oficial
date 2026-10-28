@@ -1,7 +1,6 @@
 // components/interactive-map-types.ts
 // Estado completo que interactive-map(.web).tsx le manda a la página del mapa
-// (GET /maps/embed del backend, backend/src/views/walk-map.html — ahí está el
-// contrato original). Lo que no viene en el payload se borra del mapa.
+// (components/walk-map-html.ts — ahí está el contrato original). Lo que no viene en el payload se borra del mapa.
 export type LatLng = { lat: number; lng: number };
 
 export type MapPayload = {
