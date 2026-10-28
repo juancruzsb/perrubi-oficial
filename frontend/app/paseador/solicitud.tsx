@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, type TextStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icono } from '@/components/perrubi/icono';
 import { MapaEstatico, MOSAICOS } from '@/components/perrubi/mapa-estatico';
@@ -50,7 +50,7 @@ export default function Solicitud() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
           <Icono name="solar:notes-bold" size={16} color={C.green} /><Text style={t(13, 700)}>Notas del dueño</Text>
         </View>
-        <Text style={[t(13, 400, C.body), tarjeta, { borderRadius: 10, padding: 10, boxShadow: undefined }]}>Toby es muy sociable, puede socializar con otros perros en el parque.</Text>
+        <Text style={[t(13, 400, C.body), tarjeta as TextStyle, { borderRadius: 10, padding: 10, boxShadow: undefined }]}>Toby es muy sociable, puede socializar con otros perros en el parque.</Text>
       </View>
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
         <Boton label="Rechazar" variant="danger" size={14} py={14} style={{ flex: 1 }} onPress={() => { aviso('Solicitud rechazada', 'Seguí buscando otros paseos cerca.'); router.replace('/paseador'); }} />

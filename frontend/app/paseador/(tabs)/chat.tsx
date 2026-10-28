@@ -71,7 +71,7 @@ export default function ChatPaseador() {
           <TextInput
             value={draft} onChangeText={setDraft} onSubmitEditing={() => submit()} returnKeyType="send"
             placeholder="Escribe un mensaje..." placeholderTextColor={C.placeholder}
-            style={[t(13), { flex: 1, borderWidth: 1, borderColor: C.border, boxShadow: SOMBRAS.card, borderRadius: 20, paddingVertical: 11, paddingHorizontal: 16, backgroundColor: C.white }]}
+            style={[t(13), { flex: 1, borderWidth: 1, borderColor: C.border, boxShadow: SOMBRAS.tarjeta, borderRadius: 20, paddingVertical: 11, paddingHorizontal: 16, backgroundColor: C.white }]}
           />
           <Pressable onPress={() => submit()} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center' }}>
             <Svg width={16} height={16} viewBox="0 0 24 24" fill="#fff"><Path d="M3 20l18-8L3 4v6l12 2-12 2v6z" /></Svg>

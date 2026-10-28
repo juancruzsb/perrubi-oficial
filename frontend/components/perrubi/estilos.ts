@@ -77,5 +77,5 @@ export const tarjeta: ViewStyle = {
   borderWidth: 1,
   borderColor: C.border,
   borderRadius: 14,
-  boxShadow: SOMBRAS.card,
+  boxShadow: SOMBRAS.tarjeta,
 };

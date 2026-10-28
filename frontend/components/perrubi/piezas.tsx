@@ -247,7 +247,9 @@ export function Estrellas({ n = 5, size = 14 }: { n?: number; size?: number }) {
 }
 
 export const HuellaFondo = () => (
-  <RNImage source={require('../../assets/perrubi/huella-fondo.png')} resizeMode="contain" pointerEvents="none" style={{ position: 'absolute', top: 24, right: 0, width: 160, height: 160, opacity: 0.9 }} />
+  <View pointerEvents="none" style={{ position: 'absolute', top: 24, right: 0, width: 160, height: 160, opacity: 0.9 }}>
+    <RNImage source={require('../../assets/perrubi/huella-fondo.png')} resizeMode="contain" style={{ width: '100%', height: '100%' }} />
+  </View>
 );
 
 export function AvatarEditable({ size, uri = PASEADOR.avatar }: { size: number; uri?: string }) {

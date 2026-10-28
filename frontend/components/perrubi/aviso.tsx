@@ -10,7 +10,7 @@ export const useAviso = () => useContext(Ctx);
 export function AvisoProvider({ children }: { children: React.ReactNode }) {
   const [aviso, setAviso] = useState<Aviso>(null);
   const anim = useRef(new Animated.Value(0)).current;
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const insets = useSafeAreaInsets();
 
   const mostrar = useCallback((title: string, body?: string) => {
@@ -30,7 +30,7 @@ export function AvisoProvider({ children }: { children: React.ReactNode }) {
             pointerEvents="none"
             style={{
               position: 'absolute', top: insets.top + 14, alignSelf: 'center', zIndex: 50, maxWidth: 320,
-              backgroundColor: C.ink, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, boxShadow: SOMBRAS.toast,
+              backgroundColor: C.ink, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, boxShadow: SOMBRAS.aviso,
               opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
             }}
           >

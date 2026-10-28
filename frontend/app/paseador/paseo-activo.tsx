@@ -54,12 +54,12 @@ export default function PaseoActivo() {
         gps="GPS · ±5 m"
       />
       <View style={{ marginTop: 14, marginHorizontal: 16, flexDirection: 'row', gap: 10 }}>
-        <Metrica label="TIEMPO" value={`${Math.round(progress * 30)} min`} />
-        <Metrica label="DISTANCIA" value={`${(progress * 2.3).toFixed(1)} km`} />
+        <Metrica label="TIEMPO" value={`${Math.round(progreso * 30)} min`} />
+        <Metrica label="DISTANCIA" value={`${(progreso * 2.3).toFixed(1)} km`} />
         <Metrica label="GANANCIA" value="$6.500" accent />
       </View>
       <View style={{ marginTop: 14, marginHorizontal: 16, height: 6, backgroundColor: C.track, borderRadius: 3 }}>
-        <View style={{ height: '100%', width: `${Math.round(progress * 100)}%`, backgroundColor: C.green, borderRadius: 3 }} />
+        <View style={{ height: '100%', width: `${Math.round(progreso * 100)}%`, backgroundColor: C.green, borderRadius: 3 }} />
       </View>
       <Espacio />
       <View style={{ padding: 16, flexDirection: 'row', gap: 10 }}>

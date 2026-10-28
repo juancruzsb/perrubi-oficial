@@ -1,57 +1,48 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  StatusBar,
-  ScrollView,
-  Platform,
-  KeyboardAvoidingView,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
+import { Boton, Separador, Campo, InsigniaModo, HuellaFondo, Pantalla } from '@/components/perrubi/piezas';
+import { useAviso } from '@/components/perrubi/aviso';
+import { C, t } from '@/components/perrubi/estilos';
 import { walkerLogin } from '../../api/walker';
 import { useSessionPaseador } from '../../context/session-paseador';
 
-const ORANGE         = '#f5a623';
-const ORANGE_LIGHT   = '#fdf1e0';
-const BLACK          = '#1a2e1a';
-const WHITE          = '#ffffff';
-const BG             = '#ffffff';
-const TEXT_PRIMARY   = '#1a1a1a';
-const TEXT_SECONDARY = '#666666';
-const TEXT_MUTED     = '#aaaaaa';
-const BORDER         = '#e0e0e0';
-const BORDER_FOCUS   = '#f5a623';
-const RED            = '#ef4444';
+function LogoGoogle() {
+  return (
+    <Svg width={19} height={19} viewBox="0 0 48 48">
+      <Path fill="#4285F4" d="M45 24c0-1.6-.15-3.14-.42-4.63H24v8.76h11.77c-.5 2.7-2.05 4.98-4.36 6.5v5.4h7.06C42.6 36.2 45 30.6 45 24z" />
+      <Path fill="#34A853" d="M24 46c5.94 0 10.93-1.97 14.57-5.33l-7.06-5.4C29.5 36.6 27 37.4 24 37.4c-5.8 0-10.7-3.9-12.45-9.16H4.3v5.6C7.95 41.1 15.4 46 24 46z" />
+      <Path fill="#FBBC05" d="M11.55 28.24A13.6 13.6 0 0 1 10.83 24c0-1.47.26-2.9.72-4.24v-5.6H4.3A22 22 0 0 0 2 24c0 3.55.85 6.9 2.3 9.84l7.25-5.6z" />
+      <Path fill="#EA4335" d="M24 10.6c3.27 0 6.2 1.12 8.5 3.32l6.27-6.27C34.9 4.12 29.94 2 24 2 15.4 2 7.95 6.9 4.3 14.16l7.25 5.6C13.3 14.5 18.2 10.6 24 10.6z" />
+    </Svg>
+  );
+}
+function LogoApple() {
+  return (
+    <Svg width={17} height={19} viewBox="0 0 24 24" fill="#fff">
+      <Path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.7 2.3 2.9 2.3 1.1 0 1.6-.7 3-.7s1.8.7 3 .7c1.2 0 2-1.1 2.8-2.2.9-1.3 1.3-2.5 1.3-2.6-.1 0-2.6-1-2.6-3.5zM14.2 5.6c.6-.8 1-1.8.9-2.9-.9.1-2 .6-2.7 1.4-.6.7-1 1.8-.9 2.8 1 .1 2.1-.5 2.7-1.3z" />
+    </Svg>
+  );
+}
 
 // Login real de paseadores: POST /auth/walkerLogin (api/walker.ts), sesión
 // guardada aparte de la del dueño (ver context/session-paseador.tsx).
-export default function LoginPaseadorScreen() {
+export default function LoginPaseador() {
   const router = useRouter();
+  const aviso = useAviso();
   const { entrar, token, cargando } = useSessionPaseador();
-
-  const [email,    setEmail]    = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState('');
-
-  const [emailFocus, setEmailFocus] = useState(false);
-  const [passFocus,  setPassFocus]  = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleIngresar = async () => {
     setError('');
-
     if (!email.trim() || !password) {
       setError('Completá tu email y contraseña.');
       return;
     }
-
     try {
       setLoading(true);
       const res = await walkerLogin({ email: email.trim().toLowerCase(), password });
@@ -64,210 +55,58 @@ export default function LoginPaseadorScreen() {
     }
   };
 
+  const proximamente = () => aviso('Próximamente', 'Por ahora ingresá con tu correo y contraseña.');
+
   // Ya hay una sesión de paseador guardada: no pedir las credenciales de nuevo.
   if (!cargando && token) return <Redirect href="/paseador" />;
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
-
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="arrow-back" size={22} color={TEXT_PRIMARY} />
-        </TouchableOpacity>
-      </View>
-
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.logoSection}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>MODO PASEADOR</Text>
-          </View>
-
-          <View style={styles.pinCircle}>
-            <Ionicons name="paw" size={30} color={ORANGE} style={styles.pinPaw} />
-          </View>
-          <View style={styles.pinDot} />
-
-          <View style={styles.wordmarkRow}>
-            <Text style={styles.wordmark}>Perrubi</Text>
-            <View style={styles.wordmarkDot} />
-          </View>
-
-          <Text style={styles.tagline}>
-            Ingresá para ver los paseos{'\n'}disponibles cerca de ti
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Pantalla pad={{ paddingVertical: 24, paddingHorizontal: 28, justifyContent: 'center' }}>
+        <HuellaFondo />
+        <View style={{ alignItems: 'center', marginBottom: 26 }}>
+          <InsigniaModo />
+          <Image source={require('@/assets/perrubi/logo-perrubi.png')} resizeMode="contain" style={{ width: 96, height: 96, marginTop: 20 }} />
+          <Image source={require('@/assets/perrubi/texto-perrubi.png')} resizeMode="contain" style={{ width: 150, height: 40, marginTop: 12 }} />
+          <Text style={t(13.5, 400, C.muted, { textAlign: 'center', lineHeight: 20, marginTop: 8 })}>
+            Acceso para paseadores verificados.{'\n'}Usá el correo con el que te registraste.
           </Text>
         </View>
 
-        <View style={styles.formSection}>
-
-          {error ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-
-          <Text style={styles.label}>Correo electrónico</Text>
-          <View style={[styles.inputWrap, emailFocus && styles.inputWrapFocus]}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="tu@email.com"
-              placeholderTextColor={TEXT_MUTED}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={(t) => { setEmail(t); setError(''); }}
-              onFocus={() => setEmailFocus(true)}
-              onBlur={() => setEmailFocus(false)}
-            />
+        {!!error && (
+          <View style={{ backgroundColor: C.redSoft, borderWidth: 1, borderColor: C.redBorder, borderRadius: 12, padding: 12, marginBottom: 14 }}>
+            <Text style={t(13, 500, C.red, { textAlign: 'center' })}>{error}</Text>
           </View>
+        )}
 
-          <Text style={styles.label}>Contraseña</Text>
-          <View style={[styles.inputWrap, passFocus && styles.inputWrapFocus]}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="••••••••"
-              placeholderTextColor={TEXT_MUTED}
-              secureTextEntry={!showPass}
-              value={password}
-              onChangeText={(t) => { setPassword(t); setError(''); }}
-              onFocus={() => setPassFocus(true)}
-              onBlur={() => setPassFocus(false)}
-            />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name={showPass ? 'eye-off' : 'eye'} size={18} color={TEXT_MUTED} />
-            </TouchableOpacity>
-          </View>
+        <Campo
+          label="Correo electrónico" placeholder="tu@email.com" keyboardType="email-address" autoCapitalize="none"
+          value={email} onChangeText={(v) => { setEmail(v); setError(''); }}
+          style={{ marginBottom: 14 }}
+        />
+        <Campo
+          label="Contraseña" placeholder="••••••••" secureTextEntry
+          value={password} onChangeText={(v) => { setPassword(v); setError(''); }}
+          onSubmitEditing={handleIngresar}
+          style={{ marginBottom: 20 }}
+        />
+        <Boton
+          label={loading ? 'Entrando…' : 'Entrar →'}
+          left={loading ? <ActivityIndicator color={C.white} /> : undefined}
+          onPress={loading ? undefined : handleIngresar}
+          style={loading && { opacity: 0.7 }}
+        />
 
-          <TouchableOpacity
-            style={[styles.btnEntrar, loading && styles.btnDisabled]}
-            onPress={handleIngresar}
-            activeOpacity={0.85}
-            disabled={loading}
-          >
-            {loading
-              ? <ActivityIndicator color={WHITE} />
-              : <>
-                  <Text style={styles.btnEntrarText}>Entrar</Text>
-                  <Text style={styles.btnArrow}>→</Text>
-                </>
-            }
-          </TouchableOpacity>
-
-          <View style={styles.divisorRow}>
-            <View style={styles.divisorLine} />
-            <Text style={styles.divisorText}>O CONTINUAR CON</Text>
-            <View style={styles.divisorLine} />
-          </View>
-
-          <TouchableOpacity style={[styles.btnGoogle, styles.btnProximamente]} activeOpacity={1} disabled>
-            <Ionicons name="logo-google" size={18} color="#4285F4" />
-            <Text style={styles.btnGoogleText}>Google · Próximamente</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.btnApple, styles.btnProximamente]} activeOpacity={1} disabled>
-            <Ionicons name="logo-apple" size={20} color={WHITE} />
-            <Text style={styles.btnAppleText}>Apple · Próximamente</Text>
-          </TouchableOpacity>
-
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>¿Sos nuevo? </Text>
-            <TouchableOpacity onPress={() => router.push('/paseador/registro-paseador')}>
-              <Text style={styles.footerLink}>Postularme como paseador</Text>
-            </TouchableOpacity>
-          </View>
+        <Separador label="O CONTINUAR CON" style={{ marginTop: 20, marginBottom: 16 }} />
+        <View style={{ gap: 10 }}>
+          <Boton label="Continuar con Google" variant="outline" left={<LogoGoogle />} size={14.5} weight={600} py={13} onPress={proximamente} style={{ boxShadow: '0px 3px 8px rgba(28,42,34,0.10)' }} />
+          <Boton label="Continuar con Apple" variant="dark" left={<LogoApple />} size={14.5} py={13} radius={14} onPress={proximamente} />
         </View>
-      </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 20 }}>
+          <Text style={t(13, 400, C.muted)}>¿Sos nuevo? </Text>
+          <Pressable onPress={() => router.push('/paseador/registro-paseador')}><Text style={t(13, 700, C.green)}>Postularme como paseador</Text></Pressable>
+        </View>
+      </Pantalla>
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: BG },
-  header: { paddingHorizontal: 20, paddingVertical: 12 },
-  scroll: { flexGrow: 1, paddingHorizontal: 28, paddingBottom: 32 },
-
-  logoSection: { alignItems: 'center', marginBottom: 24 },
-  badge: {
-    backgroundColor: ORANGE_LIGHT, borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 6, marginBottom: 20,
-  },
-  badgeText: { fontSize: 11, fontWeight: '700', color: ORANGE, letterSpacing: 0.5 },
-
-  pinCircle: {
-    width: 76, height: 76, borderRadius: 38, borderBottomRightRadius: 4,
-    borderWidth: 4, borderColor: ORANGE,
-    alignItems: 'center', justifyContent: 'center',
-    transform: [{ rotate: '45deg' }], marginBottom: 6,
-  },
-  pinPaw: { transform: [{ rotate: '-45deg' }] },
-  pinDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: ORANGE, marginBottom: 14,
-  },
-
-  wordmarkRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  wordmark:    { fontSize: 34, fontWeight: '800', color: BLACK },
-  wordmarkDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ORANGE, marginTop: 6, marginLeft: 2 },
-
-  tagline: {
-    fontSize: 14, color: TEXT_SECONDARY, textAlign: 'center',
-    lineHeight: 20, marginTop: 10,
-  },
-
-  formSection: { gap: 0 },
-
-  errorBanner: {
-    backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca',
-    borderRadius: 10, padding: 12, marginBottom: 12,
-  },
-  errorText: { fontSize: 13, color: RED, textAlign: 'center' },
-
-  label:    { fontSize: 13, fontWeight: '600', color: TEXT_PRIMARY, marginBottom: 6, marginTop: 14 },
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: WHITE, borderWidth: 1.5, borderColor: BORDER, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 14 : 10, gap: 10,
-  },
-  inputWrapFocus: { borderColor: BORDER_FOCUS },
-  textInput:  { flex: 1, fontSize: 14, color: TEXT_PRIMARY },
-
-  btnEntrar: {
-    backgroundColor: ORANGE, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 20,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    marginTop: 24,
-    shadowColor: ORANGE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
-  },
-  btnDisabled:    { opacity: 0.7 },
-  btnProximamente: { opacity: 0.5 },
-  btnEntrarText:  { fontSize: 16, fontWeight: '700', color: WHITE },
-  btnArrow:       { fontSize: 18, color: WHITE, fontWeight: '700' },
-
-  divisorRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 20 },
-  divisorLine: { flex: 1, height: 0.5, backgroundColor: BORDER },
-  divisorText: { fontSize: 11, color: TEXT_MUTED, letterSpacing: 0.5 },
-
-  btnGoogle: {
-    borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    borderWidth: 1.5, borderColor: BORDER, backgroundColor: WHITE,
-    marginBottom: 12,
-  },
-  btnGoogleText: { fontSize: 15, fontWeight: '600', color: TEXT_PRIMARY },
-
-  btnApple: {
-    borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: BLACK,
-  },
-  btnAppleText: { fontSize: 15, fontWeight: '600', color: WHITE },
-
-  footerRow:  { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
-  footerText: { fontSize: 13, color: TEXT_SECONDARY },
-  footerLink: { fontSize: 13, color: ORANGE, fontWeight: '700' },
-});
